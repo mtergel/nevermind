@@ -1,5 +1,5 @@
 use clap::Parser;
-use nevermind::{app::Application, config::AppConfig};
+use nevermind::{app::Application, config::AppConfig, telemetry::register_telemetry};
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
@@ -8,6 +8,9 @@ async fn main() -> anyhow::Result<()> {
 
     let app_config = AppConfig::parse();
     let app = Application::build(app_config).await?;
+
+    // Setup telemetry
+    register_telemetry();
 
     // Run on tokio multi-thread
     let (close_tx, close_rx) = tokio::sync::oneshot::channel();

@@ -1,5 +1,10 @@
 use clap::Parser;
-use nevermind::{app::Application, config::AppConfig};
+use nevermind::{app::Application, config::AppConfig, telemetry::register_telemetry};
+use std::sync::LazyLock;
+
+static TELEMETRY: LazyLock<()> = LazyLock::new(|| {
+    register_telemetry();
+});
 
 pub struct TestApp {
     pub address: String,
@@ -12,6 +17,8 @@ impl TestApp {}
 pub async fn spawn_app() -> TestApp {
     // Config setup
     dotenvy::dotenv().ok();
+
+    LazyLock::force(&TELEMETRY);
 
     // Randomise configuration to ensure test isolation
     let app_config = {

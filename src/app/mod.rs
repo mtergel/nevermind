@@ -1,8 +1,19 @@
 use axum::Router;
 use std::sync::Arc;
 use tokio::net::TcpListener;
+use uuid::Uuid;
 
-use crate::{config::AppConfig, routes::health_check};
+use axum::{extract::MatchedPath, http::Request};
+use tower_http::trace::TraceLayer;
+use tracing::info_span;
+
+pub mod error;
+pub mod extrator;
+
+use crate::{
+    config::AppConfig,
+    routes::{auth, health_check},
+};
 
 pub struct Application {
     listener: TcpListener,
@@ -57,5 +68,26 @@ impl Application {
 fn build_routes(api_context: ApiContext) -> Router {
     Router::new()
         .merge(health_check::router())
+        .merge(auth::router())
         .with_state(api_context)
+        .layer(
+            TraceLayer::new_for_http()
+                .make_span_with(|req: &Request<_>| {
+                    let request_id = Uuid::new_v4();
+
+                    let matched_path = req
+                        .extensions()
+                        .get::<MatchedPath>()
+                        .map(MatchedPath::as_str);
+
+                    info_span!(
+                        "http_request",
+                        method = ?req.method(),
+                        matched_path,
+                        request_id = ?request_id,
+                        user_id = tracing::field::Empty
+                    )
+                })
+                .on_failure(()),
+        )
 }
