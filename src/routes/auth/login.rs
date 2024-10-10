@@ -1,10 +1,10 @@
-use axum::{extract::State, routing::post, Json, Router};
+use axum::{extract::State, routing::post, Router};
 use secrecy::SecretString;
 use serde::Deserialize;
 use utoipa::ToSchema;
 use validator::Validate;
 
-use crate::app::{error::AppError, ApiContext};
+use crate::app::{error::AppError, extrator::ValidatedJson, ApiContext};
 
 #[derive(Debug, Deserialize, Validate, ToSchema)]
 struct LoginUser {
@@ -30,12 +30,10 @@ pub fn router() -> Router<ApiContext> {
     )
 )]
 #[tracing::instrument(name = "Login user", skip_all, fields(email = %req.email))]
-async fn login_user(ctx: State<ApiContext>, Json(req): Json<LoginUser>) -> Result<(), AppError> {
-    // Doing this manually untill its fixed in extrator.rs
-    if let Err(e) = req.validate() {
-        tracing::info!("Invalid login input");
-        return Err(e.into());
-    }
-
+#[axum::debug_handler]
+async fn login_user(
+    ctx: State<ApiContext>,
+    ValidatedJson(req): ValidatedJson<LoginUser>,
+) -> Result<(), AppError> {
     Ok(())
 }
