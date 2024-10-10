@@ -25,8 +25,8 @@ pub fn router() -> Router<ApiContext> {
     request_body = LoginUser,
     responses(
         (status = 200, description = "Successful login"),
-        (status = 400, description = "Bad request"),
-        (status = 422, description = "Invalid input"),
+        (status = 400, description = "Bad request", body = AppError),
+        (status = 422, description = "Invalid input", body = AppError),
     )
 )]
 #[tracing::instrument(name = "Login user", skip_all, fields(email = %req.email))]
