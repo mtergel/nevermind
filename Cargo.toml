@@ -19,5 +19,6 @@ tracing-subscriber = { version = "0.3.18", features = [
     "env-filter",
     "registry",
 ] }
+utoipa = { version = "5.0.0-rc", features = ["axum_extras"] }
 uuid = { version = "1.10.0", features = ["v4", "serde"] }
 validator = { version = "0.18.1", features = ["derive"] }
