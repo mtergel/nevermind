@@ -1,4 +1,5 @@
 use axum::Router;
+use sqlx::{postgres::PgPoolOptions, PgPool};
 use std::sync::Arc;
 use tokio::net::TcpListener;
 use uuid::Uuid;
@@ -24,10 +25,12 @@ pub struct Application {
 #[derive(Clone)]
 pub struct ApiContext {
     config: Arc<AppConfig>,
+    db_pool: PgPool,
 }
 
 impl Application {
     pub async fn build(config: AppConfig) -> Result<Self, anyhow::Error> {
+        // Connection
         let addr = format!(
             "{}:{}",
             config.app_application_host, config.app_application_port
@@ -35,8 +38,12 @@ impl Application {
         let listener = TcpListener::bind(addr).await?;
         let port = listener.local_addr().unwrap().port();
 
+        // Database
+        let db_pool = get_db_connection_pool(&config);
+
         let api_context = ApiContext {
             config: Arc::new(config),
+            db_pool,
         };
 
         let app = build_routes(api_context);
@@ -91,4 +98,8 @@ fn build_routes(api_context: ApiContext) -> Router {
                 })
                 .on_failure(()),
         )
+}
+
+pub fn get_db_connection_pool(config: &AppConfig) -> PgPool {
+    PgPoolOptions::new().connect_lazy_with(config.db_connect_options())
 }
