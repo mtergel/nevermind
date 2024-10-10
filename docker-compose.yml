@@ -1,0 +1,8 @@
+services:
+  postgres:
+    image: postgres:latest
+    container_name: postgres-latest
+    ports:
+      - "5432:${DB_PORT}"
+    environment:
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
