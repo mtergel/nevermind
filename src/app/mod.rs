@@ -12,7 +12,7 @@ pub mod extrator;
 
 use crate::{
     config::AppConfig,
-    routes::{auth, health_check},
+    routes::{auth, docs, health_check},
 };
 
 pub struct Application {
@@ -68,6 +68,7 @@ impl Application {
 fn build_routes(api_context: ApiContext) -> Router {
     Router::new()
         .merge(health_check::router())
+        .merge(docs::router())
         .merge(auth::router())
         .with_state(api_context)
         .layer(

@@ -6,10 +6,10 @@ pub struct AppConfig {
     pub stage: Stage,
 
     // App configs
-    #[clap(long, env)]
+    #[clap(long, env, default_value_t = 8080)]
     pub app_application_port: u16,
 
-    #[clap(long, env)]
+    #[clap(long, env, default_value = "0.0.0.0")]
     pub app_application_host: String,
 
     #[clap(long, env)]

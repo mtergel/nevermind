@@ -8,10 +8,12 @@ use axum::{
 };
 use serde::Serialize;
 use thiserror::Error;
+use utoipa::ToSchema;
 
-#[derive(Error, Debug)]
+#[derive(Error, Debug, ToSchema)]
 pub enum AppError {
     #[error("malformed input in the request body")]
+    #[schema(value_type = ())]
     AxumJsonRejection(#[from] JsonRejection),
 
     #[error("error in the request body")]
@@ -20,9 +22,11 @@ pub enum AppError {
     },
 
     #[error("request body does not meet requirments")]
+    #[schema(value_type = HashMap<Cow<'static, str>, Vec<Cow<'static, str>>>)]
     ValidationError(#[from] validator::ValidationErrors),
 
     #[error("an internal server error occurred")]
+    #[schema(value_type = ())]
     Anyhow(#[from] anyhow::Error),
 }
 
