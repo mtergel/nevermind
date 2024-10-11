@@ -5,6 +5,7 @@ edition = "2021"
 
 [dependencies]
 anyhow = "1.0.89"
+argon2 = "0.5.3"
 async-trait = "0.1.83"
 axum = { version = "0.7.7", features = ["macros", "json"] }
 clap = { version = "4.5.20", features = ["derive", "env"] }

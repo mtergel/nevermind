@@ -10,6 +10,7 @@ use tracing::info_span;
 
 pub mod error;
 pub mod extrator;
+pub mod password;
 
 use crate::{
     config::AppConfig,
@@ -24,8 +25,8 @@ pub struct Application {
 
 #[derive(Clone)]
 pub struct ApiContext {
-    config: Arc<AppConfig>,
-    db_pool: PgPool,
+    pub config: Arc<AppConfig>,
+    pub db_pool: PgPool,
 }
 
 impl Application {

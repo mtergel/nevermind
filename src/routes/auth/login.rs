@@ -4,7 +4,12 @@ use serde::Deserialize;
 use utoipa::ToSchema;
 use validator::Validate;
 
-use crate::app::{error::AppError, extrator::ValidatedJson, ApiContext};
+use crate::app::{
+    error::AppError,
+    extrator::ValidatedJson,
+    password::{validate_credentials, Credentials},
+    ApiContext,
+};
 
 #[derive(Debug, Deserialize, Validate, ToSchema)]
 struct LoginUser {
@@ -29,11 +34,25 @@ pub fn router() -> Router<ApiContext> {
         (status = 422, description = "Invalid input", body = AppError),
     )
 )]
-#[tracing::instrument(name = "Login user", skip_all, fields(email = %req.email))]
-#[axum::debug_handler]
+#[tracing::instrument(name = "Login user", skip_all, fields(email = tracing::field::Empty, user_id = tracing::field::Empty))]
 async fn login_user(
     ctx: State<ApiContext>,
     ValidatedJson(req): ValidatedJson<LoginUser>,
 ) -> Result<(), AppError> {
-    Ok(())
+    tracing::Span::current().record("email", tracing::field::display(&req.email));
+
+    let credentials = Credentials {
+        email: req.email,
+        password_hash: req.password,
+    };
+
+    match validate_credentials(credentials, &ctx.db_pool).await {
+        Ok(user_id) => {
+            tracing::Span::current().record("user_id", tracing::field::display(&user_id));
+
+            Ok(())
+        }
+
+        Err(e) => Err(e),
+    }
 }

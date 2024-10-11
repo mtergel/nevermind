@@ -3,13 +3,10 @@ ifneq (,$(wildcard ./.env))
     export
 endif
 
-# Variables
-DB_URL = postgres://$(DB_USERNAME):$(DB_PASSWORD)@$(DB_HOST):$(DB_PORT)/$(DB_NAME)
-
 # Setup
 .PHONY: setup
 setup:
-	sqlx db setup --database-url "$(DB_URL)"
+	sqlx db setup
 
 # Build the project
 .PHONY: build
@@ -29,7 +26,7 @@ test:
 # Run migrations
 .PHONY: migrate
 migrate:
-	sqlx migrate run --database-url "$(DB_URL)"
+	sqlx migrate run
 
 # Help
 .PHONY: help

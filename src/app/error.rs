@@ -2,7 +2,7 @@ use std::{borrow::Cow, collections::HashMap};
 
 use axum::{
     extract::rejection::JsonRejection,
-    http::StatusCode,
+    http::{header::WWW_AUTHENTICATE, StatusCode},
     response::{IntoResponse, Response},
     Json,
 };
@@ -12,6 +12,9 @@ use utoipa::ToSchema;
 
 #[derive(Error, Debug, ToSchema)]
 pub enum AppError {
+    #[error("authentication required")]
+    Unauthorized,
+
     #[error("malformed input in the request body")]
     #[schema(value_type = ())]
     AxumJsonRejection(#[from] JsonRejection),
@@ -21,9 +24,13 @@ pub enum AppError {
         errors: HashMap<Cow<'static, str>, Vec<Cow<'static, str>>>,
     },
 
-    #[error("request body does not meet requirments")]
+    #[error("request body does not meet validation requirements")]
     #[schema(value_type = HashMap<Cow<'static, str>, Vec<Cow<'static, str>>>)]
     ValidationError(#[from] validator::ValidationErrors),
+
+    #[error("an error occurred with the database")]
+    #[schema(value_type = ())]
+    Sqlx(#[from] sqlx::Error),
 
     #[error("an internal server error occurred")]
     #[schema(value_type = ())]
@@ -38,6 +45,17 @@ struct InputErrorResponse {
 impl IntoResponse for AppError {
     fn into_response(self) -> Response {
         match self {
+            Self::Unauthorized => {
+                return (
+                    self.status_code(),
+                    // Include the `WWW-Authenticate` challenge required in the specification
+                    // for the `401 Unauthorized` response code:
+                    // https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/401
+                    [(WWW_AUTHENTICATE, "Bearer")],
+                    self.to_string(),
+                )
+                    .into_response();
+            }
             Self::ValidationError(e) => {
                 let mut error_map: HashMap<Cow<'static, str>, Vec<Cow<'static, str>>> =
                     HashMap::new();
@@ -64,6 +82,10 @@ impl IntoResponse for AppError {
                     Json(InputErrorResponse { errors }),
                 )
                     .into_response();
+            }
+
+            Self::Sqlx(ref e) => {
+                tracing::error!("Database error: {:?}", e)
             }
 
             Self::Anyhow(ref e) => {
@@ -100,9 +122,11 @@ impl AppError {
 
     fn status_code(&self) -> StatusCode {
         match self {
+            Self::Unauthorized => StatusCode::UNAUTHORIZED,
             Self::AxumJsonRejection(_) => StatusCode::BAD_REQUEST,
             Self::UnprocessableEntity { .. } => StatusCode::UNPROCESSABLE_ENTITY,
             Self::ValidationError(_) => StatusCode::UNPROCESSABLE_ENTITY,
+            Self::Sqlx(_) => StatusCode::INTERNAL_SERVER_ERROR,
             Self::Anyhow(_) => StatusCode::INTERNAL_SERVER_ERROR,
         }
     }
