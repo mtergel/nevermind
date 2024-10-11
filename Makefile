@@ -21,7 +21,7 @@ run: build
 # Test the project
 .PHONY: test
 test:
-	cargo test
+	RUST_LOG=test=debug,tower_http=info,axum::rejection=trace cargo test
 
 # Run migrations
 .PHONY: migrate

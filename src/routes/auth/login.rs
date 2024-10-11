@@ -1,6 +1,6 @@
 use axum::{extract::State, routing::post, Router};
 use secrecy::SecretString;
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 use utoipa::ToSchema;
 use validator::Validate;
 
@@ -19,6 +19,23 @@ struct LoginUser {
     #[schema(value_type = String)]
     password: SecretString,
 }
+
+#[derive(Debug, Serialize, ToSchema)]
+struct UserResponse {
+    access_token: String,
+    refresh_token: String,
+    expires_in: u64,
+    token_type: TokenType,
+    scope: Scope,
+}
+
+#[derive(Debug, Deserialize, Serialize, ToSchema)]
+enum TokenType {
+    Bearer,
+}
+
+#[derive(Debug, Deserialize, Serialize, ToSchema)]
+enum Scope {}
 
 pub fn router() -> Router<ApiContext> {
     Router::new().route("/auth/login", post(login_user))

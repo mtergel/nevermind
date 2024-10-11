@@ -10,9 +10,11 @@ async-trait = "0.1.83"
 axum = { version = "0.7.7", features = ["macros", "json"] }
 clap = { version = "4.5.20", features = ["derive", "env"] }
 dotenvy = "0.15.7"
+rand = "0.8.5"
 reqwest = { version = "0.12.8", features = ["json"] }
 secrecy = { version = "0.10.2", features = ["serde"] }
 serde = { version = "1.0.210", features = ["derive"] }
+serde_json = "1.0.128"
 sqlx = { version = "0.8.2", features = ["runtime-tokio-rustls", "postgres", "uuid", "time"] }
 thiserror = "1.0.64"
 tokio = { version = "1.40.0", features = ["full"] }
@@ -25,3 +27,6 @@ tracing-subscriber = { version = "0.3.18", features = [
 utoipa = { version = "5.0.0-rc", features = ["axum_extras"] }
 uuid = { version = "1.10.0", features = ["v4", "serde"] }
 validator = { version = "0.18.1", features = ["derive"] }
+
+[dev-dependencies]
+fake = "2.10.0"

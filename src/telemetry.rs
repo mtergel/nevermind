@@ -11,7 +11,7 @@ pub fn register_telemetry() {
                 // axum logs rejections from built-in extractors with the `axum::rejection`
                 // target, at `TRACE` level. `axum::rejection=trace` enables showing those events
                 format!(
-                    "{}=debug,tower_http=debug,axum::rejection=trace",
+                    "{}=info,tower_http=info,axum::rejection=trace",
                     env!("CARGO_CRATE_NAME")
                 )
                 .into()
