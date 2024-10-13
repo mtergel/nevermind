@@ -6,3 +6,9 @@ services:
       - "5432:${DB_PORT}"
     environment:
       POSTGRES_PASSWORD: ${DB_PASSWORD}
+  redis:
+    image: redis/redis-stack:latest
+    container_name: redis-stack-latest
+    ports:
+      - "6379:6379"
+      - "8001:8001" # Redis Insight web interface

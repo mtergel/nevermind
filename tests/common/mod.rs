@@ -1,4 +1,9 @@
+use argon2::{password_hash::SaltString, Argon2, PasswordHash};
 use clap::Parser;
+use fake::{
+    faker::internet::en::{Password, SafeEmail, Username},
+    Fake,
+};
 use nevermind::{
     app::{get_db_connection_pool, Application},
     config::AppConfig,
@@ -17,9 +22,75 @@ pub struct TestApp {
     pub port: u16,
     pub api_client: reqwest::Client,
     pub db_pool: PgPool,
+    pub test_user: TestUser,
 }
 
-impl TestApp {}
+impl TestApp {
+    pub async fn post_login<Body>(&self, body: &Body) -> reqwest::Response
+    where
+        Body: serde::Serialize,
+    {
+        self.api_client
+            .post(&format!("{}/oauth/token", &self.address))
+            .json(body)
+            .send()
+            .await
+            .expect("failed to execute request")
+    }
+}
+
+pub struct TestUser {
+    pub user_id: Uuid,
+    pub username: String,
+    pub email: String,
+    pub password: String,
+}
+
+impl TestUser {
+    pub fn generate() -> Self {
+        TestUser {
+            user_id: Uuid::new_v4(),
+            username: Username().fake(),
+            email: SafeEmail().fake(),
+            password: Password(6..12).fake(),
+        }
+    }
+
+    async fn store(&self, pool: &PgPool) {
+        let salt = SaltString::generate(rand::thread_rng());
+        let password_hash =
+            PasswordHash::generate(Argon2::default(), &self.password, salt.as_salt())
+                .unwrap()
+                .to_string();
+
+        sqlx::query!(
+            r#"
+                insert into "user" (user_id, username, password_hash)
+                values ($1, $2, $3)
+            "#,
+            self.user_id,
+            self.username,
+            password_hash
+        )
+        .execute(pool)
+        .await
+        .expect("failed to store test user");
+
+        sqlx::query!(
+            r#"
+                insert into email (user_id, email, verified, is_primary)
+                values ($1, $2, $3, $4)
+            "#,
+            self.user_id,
+            self.email,
+            true,
+            true
+        )
+        .execute(pool)
+        .await
+        .expect("failed to store test user");
+    }
+}
 
 pub async fn spawn_app() -> TestApp {
     // Config setup
@@ -55,9 +126,12 @@ pub async fn spawn_app() -> TestApp {
         port: app.port,
         api_client,
         db_pool,
+        test_user: TestUser::generate(),
     };
 
     _ = tokio::spawn(app.run_until_stopped());
+
+    test_app.test_user.store(&test_app.db_pool).await;
 
     test_app
 }

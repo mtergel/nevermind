@@ -33,6 +33,9 @@ pub struct AppConfig {
 
     #[clap(long, env, default_value_t = false)]
     pub db_require_ssl: bool,
+
+    #[clap(long, env)]
+    pub redis_uri: SecretString,
 }
 
 #[derive(clap::ValueEnum, Debug, Clone)]
@@ -57,5 +60,9 @@ impl AppConfig {
             .port(self.db_port)
             .ssl_mode(ssl_mode)
             .database(&self.db_name)
+    }
+
+    pub fn redis_connection_string(&self) -> String {
+        self.redis_uri.expose_secret().to_string()
     }
 }
