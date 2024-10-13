@@ -1,6 +1,7 @@
 use axum::Router;
 use sqlx::{postgres::PgPoolOptions, PgPool};
 use std::sync::Arc;
+use token::TokenManager;
 use tokio::net::TcpListener;
 use uuid::Uuid;
 
@@ -11,10 +12,13 @@ use tracing::info_span;
 pub mod error;
 pub mod extrator;
 pub mod password;
+pub mod scope;
+pub mod session;
+pub mod token;
 
 use crate::{
     config::AppConfig,
-    routes::{auth, docs, health_check},
+    routes::{docs, health_check, oauth},
 };
 
 pub struct Application {
@@ -27,6 +31,8 @@ pub struct Application {
 pub struct ApiContext {
     pub config: Arc<AppConfig>,
     pub db_pool: PgPool,
+    pub redis_client: redis::Client,
+    pub token_manager: TokenManager,
 }
 
 impl Application {
@@ -41,10 +47,15 @@ impl Application {
 
         // Database
         let db_pool = get_db_connection_pool(&config);
+        let redis_client = get_redis_client(&config);
+
+        let token_manager = TokenManager::new(&config.app_application_hmac);
 
         let api_context = ApiContext {
             config: Arc::new(config),
             db_pool,
+            redis_client,
+            token_manager,
         };
 
         let app = build_routes(api_context);
@@ -77,7 +88,7 @@ fn build_routes(api_context: ApiContext) -> Router {
     Router::new()
         .merge(health_check::router())
         .merge(docs::router())
-        .merge(auth::router())
+        .merge(oauth::router())
         .with_state(api_context)
         .layer(
             TraceLayer::new_for_http()
@@ -103,4 +114,8 @@ fn build_routes(api_context: ApiContext) -> Router {
 
 pub fn get_db_connection_pool(config: &AppConfig) -> PgPool {
     PgPoolOptions::new().connect_lazy_with(config.db_connect_options())
+}
+
+pub fn get_redis_client(config: &AppConfig) -> redis::Client {
+    redis::Client::open(config.redis_connection_string()).unwrap()
 }

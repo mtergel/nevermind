@@ -64,8 +64,8 @@ impl IntoResponse for AppError {
                     if let Some(validation_error) = error.first() {
                         error_map
                             .entry(field.into())
-                            .or_insert_with(Vec::new)
-                            .push(validation_error.code.clone().into());
+                            .or_default()
+                            .push(validation_error.code.clone());
                     }
                 }
 
@@ -89,7 +89,7 @@ impl IntoResponse for AppError {
             }
 
             Self::Anyhow(ref e) => {
-                tracing::error!("Internal server error: {:?}", e)
+                tracing::error!("internal server error: {:?}", e)
             }
 
             _ => (),

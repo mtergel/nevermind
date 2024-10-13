@@ -66,7 +66,7 @@ async fn verify_password_hash(
     candidate: SecretString,
 ) -> Result<(), AppError> {
     spawn_blocking_with_tracing(move || -> Result<(), AppError> {
-        let hash = PasswordHash::new(&expected_password_hash.expose_secret())
+        let hash = PasswordHash::new(expected_password_hash.expose_secret())
             .map_err(|e| anyhow::anyhow!("invalid password hash: {}", e))?;
 
         hash.verify_password(&[&Argon2::default()], candidate.expose_secret())

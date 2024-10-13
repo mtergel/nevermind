@@ -1,5 +1,5 @@
 use tokio::task::JoinHandle;
-use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
+use tracing_subscriber::{fmt::format::FmtSpan, layer::SubscriberExt, util::SubscriberInitExt};
 
 /// Register telemetry as global default to process span data.
 ///
@@ -17,7 +17,11 @@ pub fn register_telemetry() {
                 .into()
             }),
         )
-        .with(tracing_subscriber::fmt::layer())
+        .with(
+            tracing_subscriber::fmt::layer()
+                .with_span_events(FmtSpan::ENTER | FmtSpan::EXIT)
+                .with_test_writer(),
+        )
         .init();
 }
 

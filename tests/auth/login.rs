@@ -7,6 +7,7 @@ async fn login_works() {
     let app = spawn_app().await;
 
     let login_body = serde_json::json!({
+        "grant_type": "password",
         "email": &app.test_user.email,
         "password": &app.test_user.password
     });
@@ -20,6 +21,7 @@ async fn login_user_not_found() {
     let app = spawn_app().await;
 
     let login_body = serde_json::json!({
+        "grant_type": "password",
         "email": "nonexistent@example.com",
         "password": "somepassword"
     });
@@ -33,6 +35,7 @@ async fn login_invalid_email_format() {
     let app = spawn_app().await;
 
     let login_body = serde_json::json!({
+        "grant_type": "password",
         "email": "invalid-email",
         "password": &app.test_user.password
     });
@@ -46,6 +49,33 @@ async fn login_missing_email() {
     let app = spawn_app().await;
 
     let login_body = serde_json::json!({
+        "grant_type": "password",
+        "password": &app.test_user.password
+    });
+
+    let res = app.post_login(&login_body).await;
+    assert_eq!(res.status(), StatusCode::UNPROCESSABLE_ENTITY);
+}
+
+#[tokio::test]
+async fn login_missing_password() {
+    let app = spawn_app().await;
+
+    let login_body = serde_json::json!({
+        "grant_type": "password",
+        "email": &app.test_user.email
+    });
+
+    let res = app.post_login(&login_body).await;
+    assert_eq!(res.status(), StatusCode::UNPROCESSABLE_ENTITY);
+}
+
+#[tokio::test]
+async fn login_missing_grant() {
+    let app = spawn_app().await;
+
+    let login_body = serde_json::json!({
+        "email": &app.test_user.email,
         "password": &app.test_user.password
     });
 
@@ -54,11 +84,13 @@ async fn login_missing_email() {
 }
 
 #[tokio::test]
-async fn login_missing_password() {
+async fn login_invalid_grant() {
     let app = spawn_app().await;
 
     let login_body = serde_json::json!({
-        "email": &app.test_user.email
+        "grant_type": "invalid-grant",
+        "email": &app.test_user.email,
+        "password": &app.test_user.password
     });
 
     let res = app.post_login(&login_body).await;
