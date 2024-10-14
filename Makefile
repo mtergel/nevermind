@@ -8,6 +8,11 @@ endif
 setup:
 	sqlx db setup
 
+# Prepare for offline build the project/tests
+.PHONY: prepare
+prepare:
+	cargo sqlx prepare -- --all-targets
+
 # Build the project
 .PHONY: build
 build:
@@ -27,6 +32,7 @@ test:
 .PHONY: migrate
 migrate:
 	sqlx migrate run
+	$(MAKE) prepare
 
 # Help
 .PHONY: help

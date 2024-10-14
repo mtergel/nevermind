@@ -1,0 +1,108 @@
+name: Rust
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    types: [opened, synchronize, reopened]
+    branches:
+      - main
+
+env:
+  CARGO_TERM_COLOR: always
+
+  STAGE: dev
+
+  APP_APPLICATION_HMAC: super-long-and-secret-random-key-needed-to-verify-message-integrity
+
+  DB_USERNAME: postgres
+  DB_PASSWORD: password
+
+  REDIS_URI: redis://127.0.0.1/
+  DATABASE_URL: postgres://postgres:password@127.0.0.1:5432/nevermind
+
+jobs:
+  test:
+    name: Test
+    runs-on: ubuntu-latest
+
+    services:
+      redis:
+        image: redis/redis-stack-server
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 6379:6379
+      postgres:
+        image: postgres
+        env:
+          POSTGRES_PASSWORD: password
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+
+    steps:
+      - name: 🏗 Setup repo
+        uses: actions/checkout@v4
+
+      - name: 🏗 Setup rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: 🏗 Setup rust cache
+        uses: Swatinem/rust-cache@v2
+
+      - name: 🏗 Install sqlx
+        uses: baptiste0928/cargo-install@v3
+        with:
+          crate: sqlx-cli
+          features: postgres
+
+      - name: 🏗 Setup Database
+        run: sqlx db setup
+
+      - name: 🧪 Run tests
+        run: cargo test
+
+      - name: 🔨 Check if offline queries are fresh
+        run: cargo sqlx prepare --workspace --check -- --all-targets
+
+  formatting:
+    name: Format
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: 🏗 Setup repo
+        uses: actions/checkout@v4
+
+      - name: 🏗 Setup rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt
+
+      - name: Enforce formatting
+        run: cargo fmt --check
+
+  linting:
+    name: Lint
+    runs-on: ubuntu-latest
+    env:
+      SQLX_OFFLINE: true
+
+    steps:
+      - name: 🏗 Setup repo
+        uses: actions/checkout@v4
+
+      - name: 🏗 Setup rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy
+
+      - name: Linting
+        run: cargo clippy -- -D warnings

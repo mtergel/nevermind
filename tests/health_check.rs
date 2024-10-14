@@ -1,8 +1,9 @@
-mod common;
+pub mod common;
+use crate::common::helpers::spawn_app;
 
 #[tokio::test]
 async fn health_check_works() {
-    let app = common::spawn_app().await;
+    let app = spawn_app().await;
 
     let res = app
         .api_client
