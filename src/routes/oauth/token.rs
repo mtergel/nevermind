@@ -25,7 +25,7 @@ struct GrantTokenInput {
 
     // Password grant inputs
     email: Option<String>,
-    #[schema(value_type = String)]
+    #[schema(value_type = Option<String>)]
     password: Option<SecretString>,
 }
 
@@ -62,7 +62,7 @@ pub fn router() -> Router<ApiContext> {
     request_body = GrantTokenInput,
     responses(
         (status = 200, description = "Successful grant", body = GrantResponse),
-        (status = 400, description = "Bad request", body = AppError),
+        (status = 400, description = "Bad request"),
         (status = 422, description = "Invalid input", body = AppError),
         (status = 500, description = "Internal server error")
     )

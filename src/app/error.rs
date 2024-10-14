@@ -10,13 +10,14 @@ use serde::Serialize;
 use thiserror::Error;
 use utoipa::ToSchema;
 
-#[derive(Error, Debug, ToSchema)]
+#[derive(Error, Debug, Serialize, ToSchema)]
 pub enum AppError {
     #[error("authentication required")]
+    #[serde(skip)]
     Unauthorized,
 
     #[error("malformed input in the request body")]
-    #[schema(value_type = ())]
+    #[serde(skip)]
     AxumJsonRejection(#[from] JsonRejection),
 
     #[error("error in the request body")]
@@ -25,15 +26,15 @@ pub enum AppError {
     },
 
     #[error("request body does not meet validation requirements")]
-    #[schema(value_type = HashMap<Cow<'static, str>, Vec<Cow<'static, str>>>)]
+    #[serde(skip)]
     ValidationError(#[from] validator::ValidationErrors),
 
     #[error("an error occurred with the database")]
-    #[schema(value_type = ())]
+    #[serde(skip)]
     Sqlx(#[from] sqlx::Error),
 
     #[error("an internal server error occurred")]
-    #[schema(value_type = ())]
+    #[serde(skip)]
     Anyhow(#[from] anyhow::Error),
 }
 
