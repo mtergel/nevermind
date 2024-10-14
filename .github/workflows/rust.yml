@@ -23,7 +23,7 @@ env:
 
 jobs:
   test:
-    name: 🧪 Test
+    name: Test
     runs-on: ubuntu-latest
 
     services:
@@ -67,15 +67,14 @@ jobs:
       - name: 🏗 Setup Database
         run: sqlx db setup
 
-      - name: 🔨 Build
-        run: cargo build
       - name: 🧪 Run tests
         run: cargo test
-      - name: 🏗 Check if offline queries are fresh
+
+      - name: 🔨 Check if offline queries are fresh
         run: cargo sqlx prepare --workspace --check -- --all-targets
 
   formatting:
-    name: ✅ Format
+    name: Format
     runs-on: ubuntu-latest
 
     steps:
@@ -91,7 +90,7 @@ jobs:
         run: cargo fmt --check
 
   linting:
-    name: ✅ Lint
+    name: Lint
     runs-on: ubuntu-latest
     env:
       SQLX_OFFLINE: true
