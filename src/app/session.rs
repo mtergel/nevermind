@@ -1,5 +1,5 @@
 use anyhow::Context;
-use redis::{AsyncCommands, Client};
+use redis::Client;
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
@@ -13,16 +13,17 @@ pub struct Session {
     pub session_id: Uuid,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SessionMetadata {
     pub device_name: Option<String>,
     pub ip: Option<String>,
     pub last_accessed: String,
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Clone, Serialize, Deserialize)]
 pub struct SessionData {
     pub metadata: SessionMetadata,
+    pub session_id: Uuid,
     pub refresh_token: String,
 }
 
@@ -54,19 +55,25 @@ impl Session {
             .context("failed to connect to redis")
             .unwrap();
 
-        let res: Option<String> = conn
-            .get(self.get_user_session_key())
+        let res: Option<String> = redis::cmd("JSON.GET")
+            .arg(self.get_user_session_key())
+            .arg("$")
+            .query_async(&mut conn)
             .await
-            .map_err(|e| AppError::Anyhow(e.into()))?;
+            .context("failed to get value from redis")?;
 
         match res {
-            Some(res) => {
-                let data: SessionData =
-                    serde_json::from_str(&res).context("failed to parse session json")?;
+            Some(raw_data) => {
+                dbg!(&raw_data);
+                let data: Vec<SessionData> =
+                    serde_json::from_str(&raw_data).context("failed to parse redis value")?;
 
-                Ok(data)
+                if !data.is_empty() {
+                    return Ok(data[0].clone());
+                }
+
+                Err(AppError::Unauthorized)
             }
-
             None => Err(AppError::Unauthorized),
         }
     }
@@ -89,6 +96,7 @@ impl Session {
 
         let data = SessionData {
             metadata,
+            session_id: self.session_id,
             refresh_token: refresh_token.clone(),
         };
 
@@ -132,6 +140,7 @@ impl Session {
 
         let data = SessionData {
             metadata,
+            session_id: self.session_id,
             refresh_token: refresh_token.clone(),
         };
 
@@ -144,6 +153,7 @@ impl Session {
             .arg(serde_json::to_string(&data).unwrap())
             .ignore()
             .cmd("EXPIRE")
+            .arg(self.get_user_session_key())
             .arg(REFRESH_TOKEN_LENGTH.whole_seconds() as u64)
             .ignore()
             .exec_async(&mut conn)
@@ -156,3 +166,29 @@ impl Session {
         })
     }
 }
+
+// impl FromRedisValue for SessionData {
+//     fn from_redis_value(v: &redis::Value) -> redis::RedisResult<Self> {
+//         match v {
+//             redis::Value::BulkString(data) => {
+//                 let json_str = String::from_utf8(data.clone()).map_err(|_| {
+//                     redis::RedisError::from((redis::ErrorKind::ParseError, "Not Utf8"))
+//                 })?;
+//
+//                 let res: Vec<SessionData> = serde_json::from_str(&json_str).map_err(|_| {
+//                     redis::RedisError::from((redis::ErrorKind::Serialize, "Failed to parse"))
+//                 })?;
+//             }
+//
+//             redis::Value::Nil => Err(redis::RedisError::from((
+//                 redis::ErrorKind::TypeError,
+//                 "Nil value",
+//             ))),
+//
+//             _ => Err(redis::RedisError::from((
+//                 redis::ErrorKind::TypeError,
+//                 "Unexpected value type",
+//             ))),
+//         }
+//     }
+// }

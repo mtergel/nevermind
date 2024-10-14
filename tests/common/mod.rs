@@ -5,23 +5,31 @@ use fake::{
     Fake,
 };
 use nevermind::{
-    app::{get_db_connection_pool, Application},
+    app::{get_db_connection_pool, get_redis_client, Application},
     config::AppConfig,
-    telemetry::register_telemetry,
+    telemetry::{build_telemetry, register_telemetry},
 };
 use sqlx::{Connection, Executor, PgConnection, PgPool};
 use std::sync::LazyLock;
 use uuid::Uuid;
 
 static TELEMETRY: LazyLock<()> = LazyLock::new(|| {
-    register_telemetry();
+    let default_filter_level = "info".to_string();
+    let subscriber_name = "test".to_string();
+    if std::env::var("TEST_LOG").is_ok() {
+        let telemetry = build_telemetry(subscriber_name, default_filter_level, std::io::stdout);
+        register_telemetry(telemetry);
+    } else {
+        let null_telemetry = build_telemetry(subscriber_name, default_filter_level, std::io::sink);
+        register_telemetry(null_telemetry);
+    };
 });
 
 pub struct TestApp {
     pub address: String,
-    pub port: u16,
     pub api_client: reqwest::Client,
     pub db_pool: PgPool,
+    pub redis_client: redis::Client,
     pub test_user: TestUser,
 }
 
@@ -119,13 +127,14 @@ pub async fn spawn_app() -> TestApp {
         .unwrap();
 
     let db_pool = get_db_connection_pool(&app_config);
+    let redis_client = get_redis_client(&app_config);
     let app = Application::build(app_config).await.unwrap();
 
     let test_app = TestApp {
         address: format!("http://localhost:{}", &app.port),
-        port: app.port,
         api_client,
         db_pool,
+        redis_client,
         test_user: TestUser::generate(),
     };
 

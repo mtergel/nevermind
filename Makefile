@@ -16,7 +16,7 @@ build:
 # Run the project, Dev loop
 .PHONY: run
 run: build
-	cargo watch -x check -x test -x run
+	cargo watch -x run | bunyan
 
 # Test the project
 .PHONY: test
