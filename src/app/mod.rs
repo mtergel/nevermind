@@ -1,7 +1,7 @@
+use auth::token::TokenManager;
 use axum::Router;
 use sqlx::{postgres::PgPoolOptions, PgPool};
 use std::sync::Arc;
-use token::TokenManager;
 use tokio::net::TcpListener;
 use uuid::Uuid;
 
@@ -9,12 +9,10 @@ use axum::{extract::MatchedPath, http::Request};
 use tower_http::trace::TraceLayer;
 use tracing::info_span;
 
+pub mod auth;
 pub mod error;
 pub mod extrator;
-pub mod password;
-pub mod scope;
-pub mod session;
-pub mod token;
+pub mod utils;
 
 use crate::{
     config::AppConfig,

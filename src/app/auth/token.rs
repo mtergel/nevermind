@@ -6,7 +6,7 @@ use sha2::Sha384;
 use time::OffsetDateTime;
 use uuid::Uuid;
 
-use super::error::AppError;
+use crate::app::error::AppError;
 
 pub const ACCESS_TOKEN_LENGTH: time::Duration = time::Duration::hours(1);
 pub const REFRESH_TOKEN_LENGTH: time::Duration = time::Duration::days(30);

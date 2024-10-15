@@ -1,4 +1,5 @@
 use anyhow::Context;
+use argon2::password_hash::SaltString;
 use argon2::{Argon2, PasswordHash};
 use secrecy::{ExposeSecret, SecretString};
 use sqlx::PgPool;
@@ -77,4 +78,19 @@ async fn verify_password_hash(
     })
     .await
     .context("panic in verifying password hash")?
+}
+
+#[tracing::instrument(name = "Compute password hash", skip_all)]
+pub async fn compute_password_hash(password: SecretString) -> Result<String, AppError> {
+    spawn_blocking_with_tracing(move || -> Result<String, AppError> {
+        let salt = SaltString::generate(rand::thread_rng());
+
+        Ok(
+            PasswordHash::generate(Argon2::default(), password.expose_secret(), salt.as_salt())
+                .map_err(|e| anyhow::anyhow!("faield to compute password hash: {}", e))?
+                .to_string(),
+        )
+    })
+    .await
+    .context("panic in computing password hash")?
 }

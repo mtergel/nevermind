@@ -7,12 +7,14 @@ use utoipa::ToSchema;
 use validator::Validate;
 
 use crate::app::{
+    auth::{
+        password::{validate_credentials, Credentials},
+        scope::get_scopes,
+        session::{Session, SessionMetadata},
+        token::{RefreshTokenClaims, TokenManager},
+    },
     error::AppError,
     extrator::ValidatedJson,
-    password::{validate_credentials, Credentials},
-    scope::get_scopes,
-    session::{Session, SessionMetadata},
-    token::{RefreshTokenClaims, TokenManager},
     ApiContext,
 };
 
@@ -24,6 +26,7 @@ struct GrantTokenInput {
     refresh_token: Option<String>,
 
     // Password grant inputs
+    #[validate(email)]
     email: Option<String>,
     #[schema(value_type = Option<String>)]
     password: Option<SecretString>,
@@ -63,6 +66,7 @@ pub fn router() -> Router<ApiContext> {
     responses(
         (status = 200, description = "Successful grant", body = GrantResponse),
         (status = 400, description = "Bad request"),
+        (status = 401, description = "Refresh token expired"),
         (status = 422, description = "Invalid input", body = AppError),
         (status = 500, description = "Internal server error")
     )

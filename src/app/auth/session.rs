@@ -3,10 +3,8 @@ use redis::Client;
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
-use crate::app::{
-    error::AppError,
-    token::{TokenManager, ACCESS_TOKEN_LENGTH, REFRESH_TOKEN_LENGTH},
-};
+use super::token::{TokenManager, ACCESS_TOKEN_LENGTH, REFRESH_TOKEN_LENGTH};
+use crate::app::error::AppError;
 
 pub struct Session {
     pub user_id: Uuid,
@@ -166,29 +164,3 @@ impl Session {
         })
     }
 }
-
-// impl FromRedisValue for SessionData {
-//     fn from_redis_value(v: &redis::Value) -> redis::RedisResult<Self> {
-//         match v {
-//             redis::Value::BulkString(data) => {
-//                 let json_str = String::from_utf8(data.clone()).map_err(|_| {
-//                     redis::RedisError::from((redis::ErrorKind::ParseError, "Not Utf8"))
-//                 })?;
-//
-//                 let res: Vec<SessionData> = serde_json::from_str(&json_str).map_err(|_| {
-//                     redis::RedisError::from((redis::ErrorKind::Serialize, "Failed to parse"))
-//                 })?;
-//             }
-//
-//             redis::Value::Nil => Err(redis::RedisError::from((
-//                 redis::ErrorKind::TypeError,
-//                 "Nil value",
-//             ))),
-//
-//             _ => Err(redis::RedisError::from((
-//                 redis::ErrorKind::TypeError,
-//                 "Unexpected value type",
-//             ))),
-//         }
-//     }
-// }
