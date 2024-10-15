@@ -14,6 +14,7 @@ hmac = "0.12.1"
 jwt = "0.16.0"
 rand = "0.8.5"
 redis = { version = "0.27.4", features = ["tokio-comp", "json"] }
+regex = "1.11.0"
 reqwest = { version = "0.12.8", features = ["json"] }
 secrecy = { version = "0.10.2", features = ["serde"] }
 serde = { version = "1.0.210", features = ["derive"] }

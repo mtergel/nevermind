@@ -1178,6 +1178,7 @@ dependencies = [
  "jwt",
  "rand",
  "redis",
+ "regex",
  "reqwest",
  "secrecy",
  "serde",

@@ -24,6 +24,11 @@ run: build
 	cargo watch -x run | bunyan
 
 # Test the project
+.PHONY: lint
+lint:
+	cargo clippy -- -D warnings	
+
+# Test the project
 .PHONY: test
 test:
 	RUST_LOG=nevermind=trace,tower_http=debug,axum::rejection=trace cargo test
