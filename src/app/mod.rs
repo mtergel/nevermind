@@ -1,5 +1,7 @@
 use auth::token::TokenManager;
+use aws_config::{meta::region::RegionProviderChain, BehaviorVersion, SdkConfig};
 use axum::Router;
+use email::client::EmailClient;
 use sqlx::{postgres::PgPoolOptions, PgPool};
 use std::sync::Arc;
 use tokio::net::TcpListener;
@@ -10,6 +12,7 @@ use tower_http::trace::TraceLayer;
 use tracing::info_span;
 
 pub mod auth;
+pub mod email;
 pub mod error;
 pub mod extrator;
 pub mod utils;
@@ -28,9 +31,10 @@ pub struct Application {
 #[derive(Clone)]
 pub struct ApiContext {
     pub config: Arc<AppConfig>,
-    pub db_pool: PgPool,
-    pub redis_client: redis::Client,
-    pub token_manager: TokenManager,
+    pub db_pool: Arc<PgPool>,
+    pub redis_client: Arc<redis::Client>,
+    pub token_manager: Arc<TokenManager>,
+    pub email_client: Arc<EmailClient>,
 }
 
 impl Application {
@@ -49,11 +53,19 @@ impl Application {
 
         let token_manager = TokenManager::new(&config.app_application_hmac);
 
+        let aws_config = get_aws_config().await;
+        let email_client = EmailClient::new(
+            &aws_config,
+            config.app_from_mail.clone(),
+            config.app_frontend_url.clone(),
+        );
+
         let api_context = ApiContext {
             config: Arc::new(config),
-            db_pool,
-            redis_client,
-            token_manager,
+            db_pool: Arc::new(db_pool),
+            redis_client: Arc::new(redis_client),
+            token_manager: Arc::new(token_manager),
+            email_client: Arc::new(email_client),
         };
 
         let app = build_routes(api_context);
@@ -116,4 +128,14 @@ pub fn get_db_connection_pool(config: &AppConfig) -> PgPool {
 
 pub fn get_redis_client(config: &AppConfig) -> redis::Client {
     redis::Client::open(config.redis_connection_string()).unwrap()
+}
+
+async fn get_aws_config() -> SdkConfig {
+    let region_provider = RegionProviderChain::default_provider().or_else("ap-southeast-1");
+    let aws_settings = aws_config::defaults(BehaviorVersion::latest())
+        .region(region_provider)
+        .load()
+        .await;
+
+    aws_settings
 }

@@ -16,6 +16,12 @@ pub struct AppConfig {
     #[clap(long, env)]
     pub app_application_hmac: SecretString,
 
+    #[clap(long, env, default_value = "http://localhost:3000")]
+    pub app_frontend_url: String,
+
+    #[clap(long, env)]
+    pub app_from_mail: String,
+
     #[clap(long, env, default_value = "127.0.0.0")]
     pub db_host: String,
 
