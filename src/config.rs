@@ -16,6 +16,12 @@ pub struct AppConfig {
     #[clap(long, env)]
     pub app_application_hmac: SecretString,
 
+    #[clap(long, env, default_value = "http://localhost:3000")]
+    pub app_frontend_url: String,
+
+    #[clap(long, env)]
+    pub app_from_mail: String,
+
     #[clap(long, env, default_value = "127.0.0.0")]
     pub db_host: String,
 
@@ -38,7 +44,7 @@ pub struct AppConfig {
     pub redis_uri: SecretString,
 }
 
-#[derive(clap::ValueEnum, Debug, Clone)]
+#[derive(clap::ValueEnum, Debug, Clone, PartialEq)]
 #[clap(rename_all = "kebab_case")]
 pub enum Stage {
     Dev,
@@ -62,7 +68,7 @@ impl AppConfig {
             .database(&self.db_name)
     }
 
-    pub fn redis_connection_string(&self) -> String {
-        self.redis_uri.expose_secret().to_string()
+    pub fn redis_connection_string(&self) -> &str {
+        self.redis_uri.expose_secret()
     }
 }

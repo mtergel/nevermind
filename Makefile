@@ -29,9 +29,11 @@ lint:
 	cargo clippy -- -D warnings	
 
 # Test the project
+# If want to see logs
+# use TEST_LOG=true make test | bunyan
 .PHONY: test
 test:
-	RUST_LOG=nevermind=trace,tower_http=debug,axum::rejection=trace cargo test
+	cargo test
 
 # Run migrations
 .PHONY: migrate
