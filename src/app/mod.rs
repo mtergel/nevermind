@@ -19,7 +19,7 @@ pub mod otp;
 pub mod utils;
 
 use crate::{
-    config::AppConfig,
+    config::{AppConfig, Stage},
     routes::{auth as auth_route, docs, health_check, oauth},
 };
 
@@ -59,6 +59,7 @@ impl Application {
             &aws_config,
             config.app_from_mail.clone(),
             config.app_frontend_url.clone(),
+            config.stage == Stage::Dev,
         );
 
         let api_context = ApiContext {

@@ -10,19 +10,29 @@ pub struct EmailClient {
     ses_client: Client,
     verified_email: String,
     frontend_url: String,
+
+    /// Temp solution
+    /// Should probably change later
+    should_mock: bool,
 }
 
 impl EmailClient {
     /// Build an email client
     ///
     /// It should only be called once, and shared
-    pub fn new(sdk_config: &SdkConfig, verified_email: String, frontend_url: String) -> Self {
+    pub fn new(
+        sdk_config: &SdkConfig,
+        verified_email: String,
+        frontend_url: String,
+        should_mock: bool,
+    ) -> Self {
         let ses_client = Client::new(sdk_config);
 
         EmailClient {
             ses_client,
             verified_email,
             frontend_url,
+            should_mock,
         }
     }
 
@@ -55,6 +65,10 @@ impl EmailClient {
 
     #[tracing::instrument(name = "Sending email", skip_all, fields(email = ?email))]
     pub async fn send_email(&self, email: &str, email_content: EmailContent) -> anyhow::Result<()> {
+        if self.should_mock {
+            return Ok(());
+        }
+
         match self
             .ses_client
             .send_email()

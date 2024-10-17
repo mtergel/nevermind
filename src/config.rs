@@ -44,7 +44,7 @@ pub struct AppConfig {
     pub redis_uri: SecretString,
 }
 
-#[derive(clap::ValueEnum, Debug, Clone)]
+#[derive(clap::ValueEnum, Debug, Clone, PartialEq)]
 #[clap(rename_all = "kebab_case")]
 pub enum Stage {
     Dev,

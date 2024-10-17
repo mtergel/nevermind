@@ -1,5 +1,5 @@
-use async_trait::async_trait;
 use axum::{
+    async_trait,
     extract::{FromRef, FromRequest, FromRequestParts, Json, Request},
     http::{header::AUTHORIZATION, request::Parts},
 };
