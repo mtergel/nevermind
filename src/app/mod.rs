@@ -15,11 +15,12 @@ pub mod auth;
 pub mod email;
 pub mod error;
 pub mod extrator;
+pub mod otp;
 pub mod utils;
 
 use crate::{
     config::AppConfig,
-    routes::{docs, health_check, oauth},
+    routes::{auth as auth_route, docs, health_check, oauth},
 };
 
 pub struct Application {
@@ -99,6 +100,7 @@ fn build_routes(api_context: ApiContext) -> Router {
         .merge(health_check::router())
         .merge(docs::router())
         .merge(oauth::router())
+        .merge(auth_route::router())
         .with_state(api_context)
         .layer(
             TraceLayer::new_for_http()

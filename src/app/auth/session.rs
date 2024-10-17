@@ -62,7 +62,6 @@ impl Session {
 
         match res {
             Some(raw_data) => {
-                dbg!(&raw_data);
                 let data: Vec<SessionData> =
                     serde_json::from_str(&raw_data).context("failed to parse redis value")?;
 

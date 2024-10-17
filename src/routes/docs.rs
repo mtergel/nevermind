@@ -1,5 +1,5 @@
 use crate::app::ApiContext;
-use crate::routes::oauth::OAuthApi;
+use crate::routes::{auth::AuthApi, oauth::OAuthApi};
 use axum::{routing::get, Json, Router};
 use utoipa::OpenApi;
 
@@ -11,6 +11,9 @@ pub fn router() -> Router<ApiContext> {
 #[openapi(nest(
         (
             path = "/oauth", api = OAuthApi
+        ),
+        (
+            path = "/auth", api = AuthApi
         )
 ))]
 struct Api;

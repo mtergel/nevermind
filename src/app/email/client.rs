@@ -27,7 +27,7 @@ impl EmailClient {
     }
 
     #[tracing::instrument(name = "Building confirmation email content", skip_all)]
-    async fn build_email_confirmation(self, token: &str) -> anyhow::Result<EmailContent> {
+    pub async fn build_email_confirmation(&self, token: &str) -> anyhow::Result<EmailContent> {
         let confirmation_url = format!("{}/account/verify?token={}", self.frontend_url, token);
 
         #[derive(Serialize)]
@@ -54,11 +54,11 @@ impl EmailClient {
     }
 
     #[tracing::instrument(name = "Sending email", skip_all, fields(email = ?email))]
-    async fn send_email(self, email: &String, email_content: EmailContent) -> anyhow::Result<()> {
+    pub async fn send_email(&self, email: &str, email_content: EmailContent) -> anyhow::Result<()> {
         match self
             .ses_client
             .send_email()
-            .from_email_address(self.verified_email)
+            .from_email_address(&self.verified_email)
             .destination(Destination::builder().to_addresses(email).build())
             .content(email_content)
             .send()

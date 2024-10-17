@@ -68,7 +68,7 @@ impl AppConfig {
             .database(&self.db_name)
     }
 
-    pub fn redis_connection_string(&self) -> String {
-        self.redis_uri.expose_secret().to_string()
+    pub fn redis_connection_string(&self) -> &str {
+        self.redis_uri.expose_secret()
     }
 }
