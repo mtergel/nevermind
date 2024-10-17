@@ -20,6 +20,9 @@ pub struct VerifyEmailInput {
 #[utoipa::path(
     post,
     path = "/verify",
+    security(
+        ("bearerAuth" = [])
+    ),
     request_body = VerifyEmailInput,
     responses(
         (status = 200, description = "Successful created"),

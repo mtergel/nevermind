@@ -27,9 +27,6 @@ pub struct RegisterUserInput {
 #[utoipa::path(
     post,
     path = "/register",
-    security(
-        ("bearerAuth" = [])
-    ),
     request_body = RegisterUserInput,
     responses(
         (status = 201, description = "Successful created"),
