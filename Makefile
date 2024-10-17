@@ -30,7 +30,7 @@ lint:
 
 # Test the project
 # If want to see logs
-# use TEST_LOG=true make test
+# use TEST_LOG=true make test | bunyan
 .PHONY: test
 test:
 	cargo test

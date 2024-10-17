@@ -51,7 +51,7 @@ impl EmailVerifyOtp {
         let res: Option<String> = conn
             .get(self.get_email_verify_key(token))
             .await
-            .context("faield to get value from redis")?;
+            .context("failed to get value from redis")?;
 
         Ok(res)
     }

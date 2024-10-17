@@ -78,9 +78,6 @@ async fn register_user(
         AppError::unprocessable_entity([("email", "taken")])
     })?;
 
-    // Store unverified user
-    tx.commit().await?;
-
     let otp_manager = EmailVerifyOtp { user_id };
     let token = otp_manager.generate_otp();
 
@@ -90,11 +87,15 @@ async fn register_user(
 
     send_email(&ctx.email_client, &token, &req.email).await?;
 
+    // Store unverified user
+    tx.commit().await?;
+
     Ok(())
 }
 
+#[tracing::instrument(name = "Sending email to newly registered user", skip_all)]
 async fn send_email(client: &EmailClient, token: &str, email: &str) -> anyhow::Result<()> {
-    let email_content = client.build_email_confirmation(&token).await?;
+    let email_content = client.build_email_confirmation(token).await?;
     client.send_email(email, email_content).await?;
 
     Ok(())

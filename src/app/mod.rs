@@ -135,10 +135,9 @@ pub fn get_redis_client(config: &AppConfig) -> redis::Client {
 
 async fn get_aws_config() -> SdkConfig {
     let region_provider = RegionProviderChain::default_provider().or_else("ap-southeast-1");
-    let aws_settings = aws_config::defaults(BehaviorVersion::latest())
+
+    aws_config::defaults(BehaviorVersion::latest())
         .region(region_provider)
         .load()
-        .await;
-
-    aws_settings
+        .await
 }
