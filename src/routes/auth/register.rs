@@ -1,4 +1,4 @@
-use axum::{extract::State, routing::post, Router};
+use axum::extract::State;
 use secrecy::SecretString;
 use serde::Deserialize;
 use utoipa::ToSchema;
@@ -14,12 +14,8 @@ use crate::app::{
     ApiContext,
 };
 
-pub fn router() -> Router<ApiContext> {
-    Router::new().route("/auth/register", post(register_user))
-}
-
 #[derive(Debug, Deserialize, Validate, ToSchema)]
-struct RegisterUserInput {
+pub struct RegisterUserInput {
     #[validate(regex(path = *USERNAME_REGEX))]
     username: String,
     #[validate(email)]
@@ -40,7 +36,7 @@ struct RegisterUserInput {
     )
 )]
 #[tracing::instrument(name = "Register user", skip_all)]
-async fn register_user(
+pub async fn register_user(
     ctx: State<ApiContext>,
     ValidatedJson(req): ValidatedJson<RegisterUserInput>,
 ) -> Result<(), AppError> {

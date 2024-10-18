@@ -11,7 +11,7 @@ use crate::app::{
         password::{validate_credentials, Credentials},
         scope::get_scopes,
         session::{Session, SessionMetadata},
-        token::{RefreshTokenClaims, TokenManager},
+        token::{RefreshTokenClaims, TokenManager, ValidateTokenError},
     },
     error::AppError,
     extrator::ValidatedJson,
@@ -178,7 +178,16 @@ async fn refresh_token_flow(
     client: &redis::Client,
     token_manager: &TokenManager,
 ) -> Result<GrantResponse, AppError> {
-    let claims: RefreshTokenClaims = token_manager.verify(&req.refresh_token).await?;
+    let claims: RefreshTokenClaims =
+        token_manager
+            .verify(&req.refresh_token)
+            .await
+            .map_err(|e| match e {
+                ValidateTokenError::ParseError => {
+                    AppError::unprocessable_entity([("refresh_token", "parse")])
+                }
+                _ => AppError::Unauthorized,
+            })?;
 
     let session = Session {
         user_id: claims.sub,

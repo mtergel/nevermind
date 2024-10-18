@@ -17,6 +17,10 @@ pub enum AppError {
     #[serde(skip)]
     Unauthorized,
 
+    #[error("requested data not found")]
+    #[serde(skip)]
+    NotFound,
+
     #[error("malformed input in the request body")]
     #[serde(skip)]
     AxumJsonRejection(#[from] JsonRejection),
@@ -125,6 +129,7 @@ impl AppError {
     fn status_code(&self) -> StatusCode {
         match self {
             Self::Unauthorized => StatusCode::UNAUTHORIZED,
+            Self::NotFound => StatusCode::NOT_FOUND,
             Self::AxumJsonRejection(_) => StatusCode::BAD_REQUEST,
             Self::UnprocessableEntity { .. } => StatusCode::UNPROCESSABLE_ENTITY,
             Self::ValidationError(_) => StatusCode::UNPROCESSABLE_ENTITY,

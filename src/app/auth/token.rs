@@ -6,8 +6,6 @@ use sha2::Sha384;
 use time::OffsetDateTime;
 use uuid::Uuid;
 
-use crate::app::error::AppError;
-
 pub const ACCESS_TOKEN_LENGTH: time::Duration = time::Duration::hours(1);
 pub const REFRESH_TOKEN_LENGTH: time::Duration = time::Duration::days(30);
 
@@ -51,6 +49,12 @@ impl Claims for RefreshTokenClaims {
     }
 }
 
+pub enum ValidateTokenError {
+    ParseError,
+    VerifyError,
+    Expired,
+}
+
 #[derive(Clone)]
 pub struct TokenManager {
     secret: HmacSha384,
@@ -64,19 +68,22 @@ impl TokenManager {
         TokenManager { secret: hmac }
     }
 
-    #[tracing::instrument(name = "Verify token", skip_all, fields(token = ?token))]
-    pub async fn verify<T: DeserializeOwned + Claims>(&self, token: &str) -> Result<T, AppError> {
+    #[tracing::instrument(name = "Verify access token", skip_all, fields(token = ?token))]
+    pub async fn verify<T: DeserializeOwned + Claims>(
+        &self,
+        token: &str,
+    ) -> Result<T, ValidateTokenError> {
         let jwt = jwt::Token::<jwt::Header, T, _>::parse_unverified(token)
-            .map_err(|_| AppError::unprocessable_entity([("refresh_token", "parse")]))?;
+            .map_err(|_| ValidateTokenError::ParseError)?;
 
         let jwt = jwt
             .verify_with_key(&self.secret)
-            .map_err(|_| AppError::Unauthorized)?;
+            .map_err(|_| ValidateTokenError::VerifyError)?;
 
         let (_header, claims) = jwt.into();
 
         if claims.exp() < OffsetDateTime::now_utc().unix_timestamp() {
-            return Err(AppError::Unauthorized);
+            return Err(ValidateTokenError::Expired);
         }
 
         Ok(claims)
