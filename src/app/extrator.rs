@@ -67,7 +67,11 @@ where
         }
 
         let token = &auth_header[SCHEME_PREFIX.len()..];
-        let user = ctx.token_manager.verify::<AccessTokenClaims>(token).await?;
+        let user = ctx
+            .token_manager
+            .verify::<AccessTokenClaims>(token)
+            .await
+            .map_err(|_| AppError::Unauthorized)?;
 
         Ok(AuthUser {
             user_id: user.sub,
