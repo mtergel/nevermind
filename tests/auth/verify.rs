@@ -97,6 +97,30 @@ async fn verify_invalid_otp() {
     assert_eq!(res.status(), StatusCode::NOT_FOUND);
 }
 
+#[tokio::test]
+async fn verify_missing_token_field_from_body() {
+    let app = spawn_app().await;
+    let register_res = register_new_user(&app).await;
+
+    let verify_body = serde_json::json!({
+        "some-other-field": "other"
+    });
+
+    let res = app
+        .api_client
+        .post(&format!("{}/auth/verify", &app.address))
+        .header(
+            "Authorization",
+            "Bearer ".to_owned() + &register_res.access_token,
+        )
+        .json(&verify_body)
+        .send()
+        .await
+        .expect("failed to execute request");
+
+    assert_eq!(res.status(), StatusCode::BAD_REQUEST);
+}
+
 struct RegisterNewUserRes {
     access_token: String,
     otp: String,

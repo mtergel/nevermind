@@ -55,6 +55,7 @@ pub async fn verify_email(
     }
 }
 
+#[tracing::instrument(name = "Updating email to verified", skip_all)]
 async fn update_email_status_to_verified(email: &str, pool: &PgPool) -> anyhow::Result<()> {
     let _ = sqlx::query!(
         r#"
