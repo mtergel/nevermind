@@ -16,6 +16,7 @@ use uuid::Uuid;
 static TELEMETRY: LazyLock<()> = LazyLock::new(|| {
     let default_filter_level = "info".to_string();
     let subscriber_name = "test".to_string();
+
     if std::env::var("TEST_LOG").is_ok() {
         let telemetry = build_telemetry(subscriber_name, default_filter_level, std::io::stdout);
         register_telemetry(telemetry);

@@ -33,7 +33,7 @@ pub struct VerifyEmailInput {
         (status = 500, description = "Internal server error")
     )
 )]
-#[tracing::instrument(name = "Register user", skip_all)]
+#[tracing::instrument(name = "Verify email", skip_all)]
 pub async fn verify_email(
     auth_user: AuthUser,
     ctx: State<ApiContext>,
