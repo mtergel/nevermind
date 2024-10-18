@@ -9,6 +9,9 @@ pub fn router() -> Router<ApiContext> {
     Router::new().route("/api-docs/openapi.json", get(openapi))
 }
 
+pub const AUTH_TAG: &str = "auth";
+pub const EMAIL_TAG: &str = "email";
+
 #[derive(OpenApi)]
 #[openapi(
     nest(

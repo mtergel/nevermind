@@ -6,16 +6,19 @@ use time::OffsetDateTime;
 use utoipa::ToSchema;
 use validator::Validate;
 
-use crate::app::{
-    auth::{
-        password::{validate_credentials, Credentials},
-        scope::get_scopes,
-        session::{Session, SessionMetadata},
-        token::{RefreshTokenClaims, TokenManager, ValidateTokenError},
+use crate::{
+    app::{
+        auth::{
+            password::{validate_credentials, Credentials},
+            scope::get_scopes,
+            session::{Session, SessionMetadata},
+            token::{RefreshTokenClaims, TokenManager, ValidateTokenError},
+        },
+        error::AppError,
+        extrator::ValidatedJson,
+        ApiContext,
     },
-    error::AppError,
-    extrator::ValidatedJson,
-    ApiContext,
+    routes::docs::AUTH_TAG,
 };
 
 #[derive(Debug, Deserialize, Validate, ToSchema)]
@@ -62,6 +65,7 @@ pub fn router() -> Router<ApiContext> {
 #[utoipa::path(
     post,
     path = "/token",
+    tag = AUTH_TAG,
     request_body = GrantTokenInput,
     responses(
         (status = 200, description = "Successful grant", body = GrantResponse),

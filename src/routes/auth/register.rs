@@ -4,14 +4,17 @@ use serde::Deserialize;
 use utoipa::ToSchema;
 use validator::Validate;
 
-use crate::app::{
-    auth::password::compute_password_hash,
-    email::client::EmailClient,
-    error::{AppError, ResultExt},
-    extrator::ValidatedJson,
-    otp::{email_otp::EmailVerifyOtp, OtpManager},
-    utils::{avatar_generator::generate_avatar, validation::USERNAME_REGEX},
-    ApiContext,
+use crate::{
+    app::{
+        auth::password::compute_password_hash,
+        email::client::EmailClient,
+        error::{AppError, ResultExt},
+        extrator::ValidatedJson,
+        otp::{email_otp::EmailVerifyOtp, OtpManager},
+        utils::{avatar_generator::generate_avatar, validation::USERNAME_REGEX},
+        ApiContext,
+    },
+    routes::docs::AUTH_TAG,
 };
 
 #[derive(Debug, Deserialize, Validate, ToSchema)]
@@ -27,6 +30,7 @@ pub struct RegisterUserInput {
 #[utoipa::path(
     post,
     path = "/register",
+    tag = AUTH_TAG,
     request_body = RegisterUserInput,
     responses(
         (status = 201, description = "Successful created"),

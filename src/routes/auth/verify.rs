@@ -5,11 +5,14 @@ use sqlx::PgPool;
 use utoipa::ToSchema;
 use validator::Validate;
 
-use crate::app::{
-    error::AppError,
-    extrator::{AuthUser, ValidatedJson},
-    otp::email_otp::EmailVerifyOtp,
-    ApiContext,
+use crate::{
+    app::{
+        error::AppError,
+        extrator::{AuthUser, ValidatedJson},
+        otp::email_otp::EmailVerifyOtp,
+        ApiContext,
+    },
+    routes::docs::EMAIL_TAG,
 };
 
 #[derive(Debug, Deserialize, Validate, ToSchema)]
@@ -20,6 +23,7 @@ pub struct VerifyEmailInput {
 #[utoipa::path(
     post,
     path = "/verify",
+    tag = EMAIL_TAG,
     security(
         ("bearerAuth" = [])
     ),
