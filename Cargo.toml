@@ -23,7 +23,7 @@ serde_json = "1.0.128"
 sha2 = "0.10.8"
 sqlx = { version = "0.8.2", features = ["runtime-tokio-rustls", "postgres", "uuid", "time"] }
 thiserror = "1.0.64"
-time = "0.3.36"
+time = { version = "0.3.36", features = ["formatting"] }
 tokio = { version = "1.40.0", features = ["full"] }
 tower-http = { version = "0.6.1", features = ["trace"] }
 tracing = "0.1.40"
