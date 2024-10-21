@@ -1,39 +1,26 @@
 use anyhow::Context;
-use axum::extract::State;
-use serde::Deserialize;
+use axum::extract::{Path, State};
 use sqlx::PgPool;
-use utoipa::ToSchema;
-use validator::Validate;
 
 use crate::{
-    app::{
-        error::AppError,
-        extrator::{AuthUser, ValidatedJson},
-        otp::email_otp::EmailVerifyOtp,
-        ApiContext,
-    },
+    app::{error::AppError, extrator::AuthUser, otp::email_otp::EmailVerifyOtp, ApiContext},
     routes::docs::EMAIL_TAG,
 };
 
-#[derive(Debug, Deserialize, Validate, ToSchema)]
-pub struct VerifyEmailInput {
-    token: String,
-}
-
 #[utoipa::path(
     post,
-    path = "/emails/verify",
+    path = "/emails/verify/{token}",
     tag = EMAIL_TAG,
     security(
         ("bearerAuth" = [])
     ),
-    request_body = VerifyEmailInput,
+    params(
+        ("token" = String, Path, description = "Token sent to user")
+    ),
     responses(
-        (status = 200, description = "Successful created"),
-        (status = 400, description = "Bad request"),
+        (status = 205, description = "Successful verified"),
         (status = 401, description = "Unauthorized"),
         (status = 404, description = "Not found"),
-        (status = 422, description = "Invalid input", body = AppError),
         (status = 500, description = "Internal server error")
     )
 )]
@@ -41,13 +28,13 @@ pub struct VerifyEmailInput {
 pub async fn verify_email(
     auth_user: AuthUser,
     ctx: State<ApiContext>,
-    ValidatedJson(req): ValidatedJson<VerifyEmailInput>,
+    Path(token): Path<String>,
 ) -> Result<(), AppError> {
     let otp_manager = EmailVerifyOtp {
         user_id: auth_user.user_id,
     };
 
-    let email_to_verify = otp_manager.get_data(&req.token, &ctx.redis_client).await?;
+    let email_to_verify = otp_manager.get_data(&token, &ctx.redis_client).await?;
 
     match email_to_verify {
         Some(email) => {

@@ -18,7 +18,7 @@ pub fn router() -> Router<ApiContext> {
         .route("/auth/users", post(register_user))
         .route("/auth/emails", post(add_email).get(list_user_email))
         .route("/auth/emails/:id", delete(delete_user_email))
-        .route("/auth/emails/verify", post(verify_email))
+        .route("/auth/emails/verify/:token", post(verify_email))
         .route("/auth/emails/:id/primary", patch(update_email_to_primary))
 }
 

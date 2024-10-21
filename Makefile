@@ -31,7 +31,7 @@ build:
 # It watches for changes in the code and automatically restarts the server when a change is detected.
 # Output is piped through `bunyan` for better formatted logs.
 .PHONY: dev
-run: build
+dev: build
 	cargo watch -x run | bunyan
 
 # Run code linting using `cargo clippy`.

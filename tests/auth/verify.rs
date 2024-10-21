@@ -15,18 +15,16 @@ async fn verify_email_works() {
 
     let register_res = register_new_user(&app).await;
 
-    let verify_body = serde_json::json!({
-        "token": register_res.otp
-    });
-
     let res = app
         .api_client
-        .post(&format!("{}/auth/emails/verify", &app.address))
+        .post(&format!(
+            "{}/auth/emails/verify/{}",
+            &app.address, &register_res.otp
+        ))
         .header(
             "Authorization",
             "Bearer ".to_owned() + &register_res.access_token,
         )
-        .json(&verify_body)
         .send()
         .await
         .expect("failed to execute request");
@@ -38,14 +36,9 @@ async fn verify_email_works() {
 async fn verify_missing_auth_header() {
     let app = spawn_app().await;
 
-    let verify_body = serde_json::json!({
-        "token": "some-token"
-    });
-
     let res = app
         .api_client
-        .post(&format!("{}/auth/emails/verify", &app.address))
-        .json(&verify_body)
+        .post(&format!("{}/auth/emails/verify/some-token", &app.address))
         .send()
         .await
         .expect("failed to execute request");
@@ -57,15 +50,10 @@ async fn verify_missing_auth_header() {
 async fn verify_invalid_auth_token() {
     let app = spawn_app().await;
 
-    let verify_body = serde_json::json!({
-        "token": "some-token"
-    });
-
     let res = app
         .api_client
-        .post(&format!("{}/auth/emails/verify", &app.address))
+        .post(&format!("{}/auth/emails/verify/some-token", &app.address))
         .header("Authorization", "Bearer ".to_owned() + "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c")
-        .json(&verify_body)
         .send()
         .await
         .expect("failed to execute request");
@@ -78,18 +66,13 @@ async fn verify_invalid_otp() {
     let app = spawn_app().await;
     let register_res = register_new_user(&app).await;
 
-    let verify_body = serde_json::json!({
-        "token": "some-token"
-    });
-
     let res = app
         .api_client
-        .post(&format!("{}/auth/emails/verify", &app.address))
+        .post(&format!("{}/auth/emails/verify/some-token", &app.address))
         .header(
             "Authorization",
             "Bearer ".to_owned() + &register_res.access_token,
         )
-        .json(&verify_body)
         .send()
         .await
         .expect("failed to execute request");
@@ -98,27 +81,22 @@ async fn verify_invalid_otp() {
 }
 
 #[tokio::test]
-async fn verify_missing_token_field_from_body() {
+async fn verify_empty_otp() {
     let app = spawn_app().await;
     let register_res = register_new_user(&app).await;
 
-    let verify_body = serde_json::json!({
-        "some-other-field": "other"
-    });
-
     let res = app
         .api_client
-        .post(&format!("{}/auth/emails/verify", &app.address))
+        .post(&format!("{}/auth/emails/verify/", &app.address))
         .header(
             "Authorization",
             "Bearer ".to_owned() + &register_res.access_token,
         )
-        .json(&verify_body)
         .send()
         .await
         .expect("failed to execute request");
 
-    assert_eq!(res.status(), StatusCode::BAD_REQUEST);
+    assert_eq!(res.status(), StatusCode::NOT_FOUND);
 }
 
 struct RegisterNewUserRes {

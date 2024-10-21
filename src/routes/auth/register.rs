@@ -38,7 +38,7 @@ pub struct RegisterUserInput {
         (status = 500, description = "Internal server error")
     )
 )]
-#[tracing::instrument(name = "Register user", skip_all)]
+#[tracing::instrument(name = "Register user", skip_all, fields(req = ?req))]
 pub async fn register_user(
     ctx: State<ApiContext>,
     ValidatedJson(req): ValidatedJson<RegisterUserInput>,

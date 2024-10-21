@@ -189,7 +189,6 @@ pub async fn update_email_to_primary(
     ),
     responses(
         (status = 200, description = "Successful", body = Vec<Email>),
-        (status = 400, description = "Bad request"),
         (status = 401, description = "Unauthorized"),
         (status = 500, description = "Internal server error")
     )
@@ -272,12 +271,3 @@ pub async fn delete_user_email(
 
     Ok(StatusCode::NO_CONTENT)
 }
-
-// async fn get_email_count(
-//     user_id: &Uuid,
-//     transaction: &mut Transaction<'_, Postgres>,
-// ) -> Result<i64, AppError> {
-//         .unwrap();
-//
-//     Ok(email_count)
-// }
