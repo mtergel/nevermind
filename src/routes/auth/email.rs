@@ -28,12 +28,6 @@ pub struct AddEmailInput {
     password: SecretString,
 }
 
-#[derive(Debug, Deserialize, Validate, ToSchema)]
-pub struct UpdateEmailToPrimaryInput {
-    #[validate(email)]
-    email: String,
-}
-
 #[derive(Debug, Serialize, Deserialize, Validate, ToSchema)]
 pub struct Email {
     email_id: String,
@@ -69,6 +63,19 @@ pub async fn add_email(
     validate_password(req.password, &auth_user.user_id, &ctx.db_pool).await?;
 
     let mut tx = ctx.db_pool.begin().await?;
+
+    let email_count = sqlx::query_scalar!(
+        "select count(*) from email where user_id = $1",
+        auth_user.user_id
+    )
+    .fetch_one(&mut *tx)
+    .await?
+    .unwrap_or_default();
+
+    if email_count >= ctx.config.app_application_account_email_limit.into() {
+        return Err(AppError::unprocessable_entity([("email", "limit")]));
+    }
+
     sqlx::query!(
         r#"
             insert into email (email, user_id)
@@ -95,49 +102,82 @@ pub async fn add_email(
 
     EmailVerifyOtp::send_email(&ctx.email_client, &token, &req.new_email).await?;
 
-    // Store unverified user
+    // Store unverified email
     tx.commit().await?;
 
     Ok(StatusCode::CREATED)
 }
 
 #[utoipa::path(
-    post,
-    path = "/emails/primary",
+    patch,
+    path = "/emails/{id}/primary",
     tag = EMAIL_TAG,
     security(
         ("bearerAuth" = [])
     ),
-    request_body = UpdateEmailToPrimaryInput,
+    params(
+        ("id" = String, Path, description = "Email database id")
+    ),
     responses(
-        (status = 200, description = "Successful updated"),
-        (status = 400, description = "Bad request"),
+        (status = 204, description = "Successful updated"),
         (status = 401, description = "Unauthorized"),
         (status = 404, description = "Email not found"),
-        (status = 422, description = "Invalid input", body = AppError),
         (status = 500, description = "Internal server error")
     )
 )]
-#[tracing::instrument(name = "Update email to primary", skip_all, fields(req = ?req, auth_user = ?auth_user))]
+#[tracing::instrument(name = "Update email to primary", skip_all, fields(auth_user = ?auth_user, email = tracing::field::Empty))]
 pub async fn update_email_to_primary(
     auth_user: AuthUser,
     ctx: State<ApiContext>,
-    ValidatedJson(req): ValidatedJson<UpdateEmailToPrimaryInput>,
-) -> Result<(), AppError> {
-    let _ = sqlx::query!(
+    Path(id): Path<Uuid>,
+) -> Result<StatusCode, AppError> {
+    let mut tx = ctx.db_pool.begin().await?;
+
+    let current_row = sqlx::query_scalar!(
+        r#"
+            select email_id
+            from email
+            where user_id = $1 and is_primary = true
+        "#,
+        auth_user.user_id
+    )
+    .fetch_one(&mut *tx)
+    .await?;
+
+    if current_row == id {
+        return Ok(StatusCode::NO_CONTENT);
+    }
+
+    sqlx::query!(
+        r#"
+            update email 
+            set is_primary = false
+            where email_id = $1 and user_id = $2
+        "#,
+        current_row,
+        auth_user.user_id
+    )
+    .execute(&mut *tx)
+    .await?;
+
+    let email = sqlx::query_scalar!(
         r#"
             update email 
             set is_primary = true
-            where email = $1 and user_id = $2
-            returning is_primary
+            where email_id = $1 and user_id = $2
+            returning email
         "#,
-        req.email,
+        id,
         auth_user.user_id
     )
-    .fetch_one(&*ctx.db_pool)
+    .fetch_one(&mut *tx)
     .await?;
 
-    Ok(())
+    tx.commit().await?;
+
+    tracing::Span::current().record("email", tracing::field::display(&email));
+
+    Ok(StatusCode::NO_CONTENT)
 }
 
 #[utoipa::path(
@@ -151,7 +191,6 @@ pub async fn update_email_to_primary(
         (status = 200, description = "Successful", body = Vec<Email>),
         (status = 400, description = "Bad request"),
         (status = 401, description = "Unauthorized"),
-        (status = 422, description = "Invalid input", body = AppError),
         (status = 500, description = "Internal server error")
     )
 )]
@@ -166,9 +205,10 @@ pub async fn list_user_email(
             select email_id, email, verified, is_primary, created_at 
             from email
             where user_id = $1
-            limit 20
+            limit $2
         "#,
-        auth_user.user_id
+        auth_user.user_id,
+        ctx.config.app_application_account_email_limit as i64
     )
     .fetch_all(&*ctx.db_pool)
     .await
@@ -178,7 +218,7 @@ pub async fn list_user_email(
 }
 
 #[utoipa::path(
-    get,
+    delete,
     path = "/emails/{id}",
     tag = EMAIL_TAG,
     security(
@@ -232,3 +272,12 @@ pub async fn delete_user_email(
 
     Ok(StatusCode::NO_CONTENT)
 }
+
+// async fn get_email_count(
+//     user_id: &Uuid,
+//     transaction: &mut Transaction<'_, Postgres>,
+// ) -> Result<i64, AppError> {
+//         .unwrap();
+//
+//     Ok(email_count)
+// }

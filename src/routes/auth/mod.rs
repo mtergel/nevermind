@@ -1,5 +1,5 @@
 use axum::{
-    routing::{delete, post},
+    routing::{delete, patch, post},
     Router,
 };
 use email::{add_email, delete_user_email, list_user_email, update_email_to_primary};
@@ -19,7 +19,7 @@ pub fn router() -> Router<ApiContext> {
         .route("/auth/emails", post(add_email).get(list_user_email))
         .route("/auth/emails/:id", delete(delete_user_email))
         .route("/auth/emails/verify", post(verify_email))
-        .route("/auth/emails/primary", post(update_email_to_primary))
+        .route("/auth/emails/:id/primary", patch(update_email_to_primary))
 }
 
 #[derive(OpenApi)]

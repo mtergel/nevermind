@@ -100,34 +100,35 @@ async fn make_email_primary_works() {
 
     // insert new email
     let new_email: String = SafeEmail().fake();
-    let _ = sqlx::query!(
+    let new_email_id = sqlx::query_scalar!(
         r#"
             insert into email(user_id, email)
             values ($1, $2)
+            returning email_id
         "#,
         app.test_user.user_id,
         new_email
     )
-    .execute(&app.db_pool)
+    .fetch_one(&app.db_pool)
     .await
     .unwrap();
 
     let token = app.login_and_get_token().await;
-    let update_email_to_primary_body = serde_json::json!({
-        "email": new_email,
-    });
 
     let res = app
         .api_client
-        .post(&format!("{}/auth/emails/primary", &app.address))
+        .patch(&format!(
+            "{}/auth/emails/{}/primary",
+            &app.address, &new_email_id
+        ))
         .header("Authorization", "Bearer ".to_owned() + &token)
-        .json(&update_email_to_primary_body)
         .send()
         .await
         .expect("failed to execute request");
 
     assert!(res.status().is_success());
 
+    // new email should be primary
     let is_primary = sqlx::query_scalar!(
         r#"
             select is_primary
@@ -140,26 +141,38 @@ async fn make_email_primary_works() {
     .await
     .unwrap();
 
-    assert_eq!(is_primary, true)
+    assert_eq!(is_primary, true);
+
+    // previous email should be not primary
+    let is_primary = sqlx::query_scalar!(
+        r#"
+            select is_primary
+            from email
+            where email = $1
+        "#,
+        &app.test_user.email
+    )
+    .fetch_one(&app.db_pool)
+    .await
+    .unwrap();
+
+    assert_eq!(is_primary, false)
 }
 
 #[tokio::test]
-async fn make_email_fails_for_invalid_email() {
+async fn make_email_primary_fails_for_invalid_email() {
     let app = spawn_app().await;
 
-    // insert new email
-    let new_email: String = SafeEmail().fake();
-
     let token = app.login_and_get_token().await;
-    let update_email_to_primary_body = serde_json::json!({
-        "email": new_email,
-    });
+    let new_uuid = Uuid::new_v4().to_string();
 
     let res = app
         .api_client
-        .post(&format!("{}/auth/emails/primary", &app.address))
+        .patch(&format!(
+            "{}/auth/emails/{}/primary",
+            &app.address, &new_uuid
+        ))
         .header("Authorization", "Bearer ".to_owned() + &token)
-        .json(&update_email_to_primary_body)
         .send()
         .await
         .expect("failed to execute request");
