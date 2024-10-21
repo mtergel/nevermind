@@ -1,3 +1,5 @@
+use crate::app::email::client::EmailClient;
+
 use super::OtpManager;
 use anyhow::Context;
 use rand::Rng;
@@ -54,6 +56,14 @@ impl EmailVerifyOtp {
             .context("failed to get value from redis")?;
 
         Ok(res)
+    }
+
+    #[tracing::instrument(name = "Sending confirmation email to email", skip(client))]
+    pub async fn send_email(client: &EmailClient, token: &str, email: &str) -> anyhow::Result<()> {
+        let email_content = client.build_email_confirmation(token).await?;
+        client.send_email(email, email_content).await?;
+
+        Ok(())
     }
 }
 

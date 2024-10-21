@@ -21,7 +21,7 @@ async fn verify_email_works() {
 
     let res = app
         .api_client
-        .post(&format!("{}/auth/verify", &app.address))
+        .post(&format!("{}/auth/emails/verify", &app.address))
         .header(
             "Authorization",
             "Bearer ".to_owned() + &register_res.access_token,
@@ -44,7 +44,7 @@ async fn verify_missing_auth_header() {
 
     let res = app
         .api_client
-        .post(&format!("{}/auth/verify", &app.address))
+        .post(&format!("{}/auth/emails/verify", &app.address))
         .json(&verify_body)
         .send()
         .await
@@ -63,7 +63,7 @@ async fn verify_invalid_auth_token() {
 
     let res = app
         .api_client
-        .post(&format!("{}/auth/verify", &app.address))
+        .post(&format!("{}/auth/emails/verify", &app.address))
         .header("Authorization", "Bearer ".to_owned() + "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c")
         .json(&verify_body)
         .send()
@@ -84,7 +84,7 @@ async fn verify_invalid_otp() {
 
     let res = app
         .api_client
-        .post(&format!("{}/auth/verify", &app.address))
+        .post(&format!("{}/auth/emails/verify", &app.address))
         .header(
             "Authorization",
             "Bearer ".to_owned() + &register_res.access_token,
@@ -108,7 +108,7 @@ async fn verify_missing_token_field_from_body() {
 
     let res = app
         .api_client
-        .post(&format!("{}/auth/verify", &app.address))
+        .post(&format!("{}/auth/emails/verify", &app.address))
         .header(
             "Authorization",
             "Bearer ".to_owned() + &register_res.access_token,
@@ -137,7 +137,7 @@ async fn register_new_user(app: &TestApp) -> RegisterNewUserRes {
 
     let res = app
         .api_client
-        .post(&format!("{}/auth/register", &app.address))
+        .post(&format!("{}/auth/users", &app.address))
         .json(&register_body)
         .send()
         .await

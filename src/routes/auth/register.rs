@@ -7,7 +7,6 @@ use validator::Validate;
 use crate::{
     app::{
         auth::password::compute_password_hash,
-        email::client::EmailClient,
         error::{AppError, ResultExt},
         extrator::ValidatedJson,
         otp::{email_otp::EmailVerifyOtp, OtpManager},
@@ -29,7 +28,7 @@ pub struct RegisterUserInput {
 
 #[utoipa::path(
     post,
-    path = "/register",
+    path = "/users",
     tag = AUTH_TAG,
     request_body = RegisterUserInput,
     responses(
@@ -66,11 +65,10 @@ pub async fn register_user(
     sqlx::query!(
         r#"
             insert into email (user_id, email, is_primary)
-            values ($1, $2, $3)
+            values ($1, $2, true)
         "#,
         user_id,
         req.email,
-        true
     )
     .execute(&mut *tx)
     .await
@@ -85,18 +83,10 @@ pub async fn register_user(
         .store_data(&token, &ctx.redis_client, &req.email)
         .await?;
 
-    send_email(&ctx.email_client, &token, &req.email).await?;
+    EmailVerifyOtp::send_email(&ctx.email_client, &token, &req.email).await?;
 
     // Store unverified user
     tx.commit().await?;
-
-    Ok(())
-}
-
-#[tracing::instrument(name = "Sending email to newly registered user", skip_all)]
-async fn send_email(client: &EmailClient, token: &str, email: &str) -> anyhow::Result<()> {
-    let email_content = client.build_email_confirmation(token).await?;
-    client.send_email(email, email_content).await?;
 
     Ok(())
 }

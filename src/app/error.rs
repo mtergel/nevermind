@@ -91,6 +91,10 @@ impl IntoResponse for AppError {
             }
 
             Self::Sqlx(ref e) => {
+                if let sqlx::Error::RowNotFound = e {
+                    return (StatusCode::NOT_FOUND, e.to_string()).into_response();
+                }
+
                 tracing::error!("Database error: {:?}", e)
             }
 

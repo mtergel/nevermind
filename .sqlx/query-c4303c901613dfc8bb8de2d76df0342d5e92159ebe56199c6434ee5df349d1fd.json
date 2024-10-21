@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            update email \n            set is_primary = false\n            where email_id = $1 and user_id = $2\n        ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "c4303c901613dfc8bb8de2d76df0342d5e92159ebe56199c6434ee5df349d1fd"
+}

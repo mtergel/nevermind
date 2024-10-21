@@ -22,7 +22,7 @@ pub struct VerifyEmailInput {
 
 #[utoipa::path(
     post,
-    path = "/verify",
+    path = "/emails/verify",
     tag = EMAIL_TAG,
     security(
         ("bearerAuth" = [])

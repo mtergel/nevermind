@@ -9,6 +9,7 @@ use nevermind::{
     config::AppConfig,
     telemetry::{build_telemetry, register_telemetry},
 };
+use serde::Deserialize;
 use sqlx::{Connection, Executor, PgConnection, PgPool};
 use std::sync::LazyLock;
 use uuid::Uuid;
@@ -45,6 +46,31 @@ impl TestApp {
             .send()
             .await
             .expect("failed to execute request")
+    }
+
+    pub async fn login_and_get_token(&self) -> String {
+        let login_body = serde_json::json!({
+            "grant_type": "password",
+            "email": &self.test_user.email,
+            "password": &self.test_user.password
+        });
+
+        #[derive(Deserialize)]
+        struct GrantResponse {
+            pub access_token: String,
+        }
+
+        let res = self
+            .api_client
+            .post(&format!("{}/oauth/token", &self.address))
+            .json(&login_body)
+            .send()
+            .await
+            .expect("failed to execute request");
+
+        let user_tokens = res.json::<GrantResponse>().await.unwrap();
+
+        user_tokens.access_token
     }
 }
 

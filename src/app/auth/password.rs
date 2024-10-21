@@ -62,7 +62,7 @@ async fn get_stored_credentials(
 }
 
 #[tracing::instrument(name = "Verify password hash", skip_all)]
-async fn verify_password_hash(
+pub async fn verify_password_hash(
     expected_password_hash: SecretString,
     candidate: SecretString,
 ) -> Result<(), AppError> {

@@ -37,6 +37,7 @@ where
 /// Add this as a parameter to a handler function to require the user to be logged in.
 ///
 /// Parses a JWT from the `Authorization: Bearer <token>` header.
+#[derive(Debug)]
 pub struct AuthUser {
     pub user_id: Uuid,
     pub session_id: Uuid,
