@@ -4,6 +4,7 @@ use sqlx::PgPool;
 
 use crate::{
     app::{error::AppError, extrator::AuthUser, otp::email_otp::EmailVerifyOtp, ApiContext},
+    config::Stage,
     routes::docs::EMAIL_TAG,
 };
 
@@ -32,6 +33,7 @@ pub async fn verify_email(
 ) -> Result<(), AppError> {
     let otp_manager = EmailVerifyOtp {
         user_id: auth_user.user_id,
+        should_hash: ctx.config.stage == Stage::Prod,
     };
 
     let email_to_verify = otp_manager.get_data(&token, &ctx.redis_client).await?;

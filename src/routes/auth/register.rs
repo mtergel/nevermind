@@ -13,6 +13,7 @@ use crate::{
         utils::{avatar_generator::generate_avatar, validation::USERNAME_REGEX},
         ApiContext,
     },
+    config::Stage,
     routes::docs::AUTH_TAG,
 };
 
@@ -76,7 +77,10 @@ pub async fn register_user(
         AppError::unprocessable_entity([("email", "taken")])
     })?;
 
-    let otp_manager = EmailVerifyOtp { user_id };
+    let otp_manager = EmailVerifyOtp {
+        user_id,
+        should_hash: ctx.config.stage == Stage::Prod,
+    };
     let token = otp_manager.generate_otp();
 
     otp_manager
