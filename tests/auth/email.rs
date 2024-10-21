@@ -2,6 +2,7 @@ use crate::common::helpers::spawn_app;
 use fake::{faker::internet::en::SafeEmail, Fake};
 use reqwest::StatusCode;
 use serde::Deserialize;
+use uuid::Uuid;
 
 #[tokio::test]
 async fn add_email_works() {
@@ -143,6 +144,30 @@ async fn make_email_primary_works() {
 }
 
 #[tokio::test]
+async fn make_email_fails_for_invalid_email() {
+    let app = spawn_app().await;
+
+    // insert new email
+    let new_email: String = SafeEmail().fake();
+
+    let token = app.login_and_get_token().await;
+    let update_email_to_primary_body = serde_json::json!({
+        "email": new_email,
+    });
+
+    let res = app
+        .api_client
+        .post(&format!("{}/auth/emails/primary", &app.address))
+        .header("Authorization", "Bearer ".to_owned() + &token)
+        .json(&update_email_to_primary_body)
+        .send()
+        .await
+        .expect("failed to execute request");
+
+    assert_eq!(res.status(), StatusCode::NOT_FOUND);
+}
+
+#[tokio::test]
 async fn list_email_works() {
     let app = spawn_app().await;
     let token = app.login_and_get_token().await;
@@ -192,4 +217,66 @@ async fn list_email_works() {
 
     let emails = res.json::<Vec<EmailResponse>>().await.unwrap();
     assert_eq!(emails.len(), 2);
+}
+
+#[tokio::test]
+async fn delete_email_works() {
+    let app = spawn_app().await;
+    let token = app.login_and_get_token().await;
+
+    let new_email: String = SafeEmail().fake();
+    let email_id = sqlx::query_scalar!(
+        r#"
+            insert into email(user_id, email)
+            values ($1, $2)
+            returning email_id
+        "#,
+        app.test_user.user_id,
+        new_email
+    )
+    .fetch_one(&app.db_pool)
+    .await
+    .unwrap();
+
+    let res = app
+        .api_client
+        .delete(&format!("{}/auth/emails/{}", &app.address, &email_id))
+        .header("Authorization", "Bearer ".to_owned() + &token)
+        .send()
+        .await
+        .expect("failed to execute request");
+
+    assert!(res.status().is_success());
+
+    let row = sqlx::query_scalar!(
+        r#"
+            select email_id 
+            from email
+            where email_id = $1
+        "#,
+        email_id
+    )
+    .fetch_optional(&app.db_pool)
+    .await
+    .unwrap();
+
+    assert!(row.is_none());
+}
+
+#[tokio::test]
+async fn delete_email_fails_for_invalid_email() {
+    let app = spawn_app().await;
+    let token = app.login_and_get_token().await;
+
+    let email_id: String = Uuid::new_v4().to_string();
+
+    let res = app
+        .api_client
+        .delete(&format!("{}/auth/emails/{}", &app.address, &email_id))
+        .header("Authorization", "Bearer ".to_owned() + &token)
+        .send()
+        .await
+        .expect("failed to execute request");
+
+    assert_eq!(res.status(), StatusCode::NOT_FOUND);
 }

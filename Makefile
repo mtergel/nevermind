@@ -30,7 +30,7 @@ build:
 # Run the project in development mode.
 # It watches for changes in the code and automatically restarts the server when a change is detected.
 # Output is piped through `bunyan` for better formatted logs.
-.PHONY: run
+.PHONY: dev
 run: build
 	cargo watch -x run | bunyan
 
@@ -67,7 +67,7 @@ help:
 	@echo "Makefile commands:"
 	@echo "  make setup   - Setup the project (initialize the database)"
 	@echo "  make build   - Build the project"
-	@echo "  make run     - Run the project with auto-reloading"
+	@echo "  make dev     - Run the project with auto-reloading"
 	@echo "  make migrate - Apply database migrations and prepare for offline builds"
 	@echo "  make test    - Run tests"
 	@echo "  make lint    - Lint the codebase"

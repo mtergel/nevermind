@@ -1,7 +1,12 @@
-use axum::{extract::State, Json};
+use axum::{
+    extract::{Path, State},
+    http::StatusCode,
+    Json,
+};
 use secrecy::SecretString;
 use serde::{Deserialize, Serialize};
 use utoipa::ToSchema;
+use uuid::Uuid;
 use validator::Validate;
 
 use crate::{
@@ -60,7 +65,7 @@ pub async fn add_email(
     auth_user: AuthUser,
     ctx: State<ApiContext>,
     ValidatedJson(req): ValidatedJson<AddEmailInput>,
-) -> Result<(), AppError> {
+) -> Result<StatusCode, AppError> {
     validate_password(req.password, &auth_user.user_id, &ctx.db_pool).await?;
 
     let mut tx = ctx.db_pool.begin().await?;
@@ -93,7 +98,7 @@ pub async fn add_email(
     // Store unverified user
     tx.commit().await?;
 
-    Ok(())
+    Ok(StatusCode::CREATED)
 }
 
 #[utoipa::path(
@@ -108,6 +113,7 @@ pub async fn add_email(
         (status = 200, description = "Successful updated"),
         (status = 400, description = "Bad request"),
         (status = 401, description = "Unauthorized"),
+        (status = 404, description = "Email not found"),
         (status = 422, description = "Invalid input", body = AppError),
         (status = 500, description = "Internal server error")
     )
@@ -123,17 +129,13 @@ pub async fn update_email_to_primary(
             update email 
             set is_primary = true
             where email = $1 and user_id = $2
+            returning is_primary
         "#,
         req.email,
         auth_user.user_id
     )
-    .execute(&*ctx.db_pool)
-    .await
-    .map_err(|e| match e {
-        sqlx::Error::RowNotFound => AppError::NotFound,
-
-        err => AppError::Anyhow(err.into()),
-    })?;
+    .fetch_one(&*ctx.db_pool)
+    .await?;
 
     Ok(())
 }
@@ -173,4 +175,60 @@ pub async fn list_user_email(
     .unwrap_or_default();
 
     Ok(Json(rows))
+}
+
+#[utoipa::path(
+    get,
+    path = "/emails/{id}",
+    tag = EMAIL_TAG,
+    security(
+        ("bearerAuth" = [])
+    ),
+    params(
+        ("id" = String, Path, description = "Email database id")
+    ),
+    responses(
+        (status = 204, description = "Successfully deleted"),
+        (status = 401, description = "Unauthorized"),
+        (status = 404, description = "Email not found"),
+        (status = 500, description = "Internal server error")
+    )
+)]
+#[tracing::instrument(name = "Delete user email", skip_all, fields(verified = tracing::field::Empty, id = ?id))]
+pub async fn delete_user_email(
+    auth_user: AuthUser,
+    ctx: State<ApiContext>,
+    Path(id): Path<Uuid>,
+) -> Result<StatusCode, AppError> {
+    let email = sqlx::query!(
+        r#"
+            select email_id, email, verified, is_primary, created_at 
+            from email
+            where user_id = $1 and email_id = $2
+            limit 20
+        "#,
+        auth_user.user_id,
+        id
+    )
+    .fetch_one(&*ctx.db_pool)
+    .await?;
+
+    if email.is_primary {
+        return Err(AppError::unprocessable_entity([("email", "primary")]));
+    }
+
+    tracing::Span::current().record("verified", tracing::field::display(&email.verified));
+
+    let _ = sqlx::query!(
+        r#"
+            delete
+            from email
+            where email_id = $1
+        "#,
+        id
+    )
+    .execute(&*ctx.db_pool)
+    .await?;
+
+    Ok(StatusCode::NO_CONTENT)
 }
