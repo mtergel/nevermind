@@ -42,7 +42,7 @@ impl EmailVerifyOtp {
         Ok(())
     }
 
-    #[tracing::instrument(name = "Getting email from redis using OTP", skip_all, fields(token = ?token))]
+    #[tracing::instrument(name = "Consume OTP", skip_all, fields(token = ?token))]
     pub async fn get_data(&self, token: &str, client: &Client) -> anyhow::Result<Option<String>> {
         let mut conn = client
             .get_multiplexed_tokio_connection()
@@ -54,6 +54,11 @@ impl EmailVerifyOtp {
             .get(self.get_email_verify_key(token))
             .await
             .context("failed to get value from redis")?;
+
+        let _: () = conn
+            .del(self.get_email_verify_key(token))
+            .await
+            .context("failed to delete key")?;
 
         Ok(res)
     }
