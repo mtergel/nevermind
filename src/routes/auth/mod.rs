@@ -23,7 +23,7 @@ pub fn router() -> Router<ApiContext> {
         .route("/auth/emails/verify/:token", post(verify_email))
         .route("/auth/emails/:id/primary", patch(update_email_to_primary))
         .route("/auth/forgot-password", post(forgot_password))
-        .route("/auth/reset-password/:token", post(reset_password))
+        .route("/auth/reset-password", post(reset_password))
 }
 
 #[derive(OpenApi)]

@@ -11,13 +11,12 @@ use uuid::Uuid;
 pub const EMAIL_FORGOT_OTP_LENGTH: time::Duration = time::Duration::hours(1);
 
 pub struct EmailForgotOtp {
-    pub user_id: Uuid,
     pub should_hash: bool,
 }
 
 impl EmailForgotOtp {
     fn get_db_key(&self, token: &str) -> String {
-        format!("user:{}:forgot:{}", self.user_id, token)
+        format!("reset:{}", token)
     }
 
     fn get_hashed_key(&self, token: &str) -> String {
