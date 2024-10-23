@@ -1,3 +1,5 @@
+use core::panic;
+
 use crate::common::helpers::{spawn_app, TestApp};
 use fake::{faker::internet::en::Password, Fake};
 use redis::AsyncCommands;
@@ -67,26 +69,46 @@ async fn reset_password_send(app: &TestApp) -> ResetPasswordRes {
         .await
         .unwrap();
 
-    let key = "reset:*";
-    let otps: Vec<String> = conn
-        .keys(key)
+    let pattern = "reset:*";
+    let mut iter: redis::AsyncIter<String> = conn
+        .scan_match(pattern)
         .await
-        .expect("not error when connecting to redis");
+        .expect("failed to scan iterate to redis");
 
-    let current_otp = get_first_otp(&otps);
-    assert!(current_otp.is_some(), "Expected a otp but found None");
+    let mut current_otp: Option<String> = None; // Make this mutable
+    let mut otps: Vec<String> = Vec::new();
 
-    let current_otp = current_otp.unwrap();
+    while let Some(otp) = iter.next_item().await {
+        otps.push(otp);
+    }
 
-    ResetPasswordRes { otp: current_otp }
-}
+    drop(iter);
 
-fn get_first_otp(vec: &[String]) -> Option<String> {
-    if let Some(first) = vec.get(0) {
-        let parts: Vec<&str> = first.split(':').collect();
-        if !parts.is_empty() {
-            return Some(parts.last().unwrap().to_string());
+    for otp in otps {
+        let value: String = conn.get(&otp).await.expect("failed to get email using key");
+        if value == app.test_user.email {
+            current_otp = Some(otp);
+            break;
         }
     }
+
+    if let Some(otp) = current_otp {
+        let token = extract_token(&otp);
+        assert!(token.is_some(), "Expected a otp but found None");
+
+        ResetPasswordRes {
+            otp: token.unwrap(),
+        }
+    } else {
+        panic!("could not find otp")
+    }
+}
+
+fn extract_token(first: &str) -> Option<String> {
+    let parts: Vec<&str> = first.split(':').collect();
+    if !parts.is_empty() {
+        return Some(parts.last().unwrap().to_string());
+    }
+
     None
 }

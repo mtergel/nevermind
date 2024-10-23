@@ -30,7 +30,7 @@ impl EmailForgotOtp {
         hex::encode(hashed_token)
     }
 
-    #[tracing::instrument(name = "Storing verify OTP", skip_all)]
+    #[tracing::instrument(name = "Storing forgot OTP", skip_all, fields(email = ?email))]
     pub async fn store_data(
         &self,
         token: &str,

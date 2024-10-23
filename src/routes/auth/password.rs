@@ -127,7 +127,7 @@ async fn check_email(email: &str, pool: &PgPool) -> Result<bool, AppError> {
     }
 }
 
-#[tracing::instrument(name = "Updating password of user using email", skip_all)]
+#[tracing::instrument(name = "Updating password using email", skip_all)]
 async fn reset_user_password(hash: &str, email: &str, pool: &PgPool) -> Result<Uuid, AppError> {
     let mut tx = pool.begin().await?;
 
