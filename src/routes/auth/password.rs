@@ -26,7 +26,7 @@ pub struct ForgotPasswordInput {
 #[derive(Debug, Deserialize, Validate, ToSchema)]
 pub struct ResetPasswordInput {
     token: String,
-    #[schema(value_type = Option<String>)]
+    #[schema(value_type = String)]
     new_password: SecretString,
 }
 
@@ -117,10 +117,23 @@ pub async fn reset_password(
             .execute(&mut *tx)
             .await?;
 
-            // TODO Send email
-            // To notify all emails
-
             tx.commit().await?;
+
+            let primary_email = sqlx::query_scalar!(
+                r#"
+                    select email
+                    from email
+                    where user_id = $1 and is_primary = true
+                "#,
+                user_id
+            )
+            .fetch_one(&*ctx.db_pool)
+            .await?;
+
+            let email_content = ctx.email_client.build_password_changed(&email).await?;
+            ctx.email_client
+                .send_email(&primary_email, email_content)
+                .await?;
 
             Ok(())
         }

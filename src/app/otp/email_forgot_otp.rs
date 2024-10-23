@@ -6,7 +6,6 @@ use base32::encode;
 use rand::RngCore;
 use redis::{AsyncCommands, Client};
 use sha2::{Digest, Sha256};
-use uuid::Uuid;
 
 pub const EMAIL_FORGOT_OTP_LENGTH: time::Duration = time::Duration::hours(1);
 
@@ -44,7 +43,7 @@ impl EmailForgotOtp {
             .context("failed to connect to redis")
             .unwrap();
 
-        let hashed_token = self.get_hashed_key(&token);
+        let hashed_token = self.get_hashed_key(token);
 
         let _: () = conn
             .set_ex(
@@ -66,7 +65,7 @@ impl EmailForgotOtp {
             .context("failed to connect to redis")
             .unwrap();
 
-        let hashed_token = self.get_hashed_key(&token);
+        let hashed_token = self.get_hashed_key(token);
 
         let res: Option<String> = conn
             .get(self.get_db_key(&hashed_token))
@@ -83,7 +82,9 @@ impl EmailForgotOtp {
 
     #[tracing::instrument(name = "Sending reset password instruction email", skip_all, fields(email = ?email))]
     pub async fn send_email(client: &EmailClient, token: &str, email: &str) -> anyhow::Result<()> {
-        let email_content = client.build_email_confirmation(token).await?;
+        let email_content = client
+            .build_reset_password(token, EMAIL_FORGOT_OTP_LENGTH.whole_hours())
+            .await?;
         client.send_email(email, email_content).await?;
 
         Ok(())
