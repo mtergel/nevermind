@@ -1,9 +1,11 @@
+use crate::app::email::template::{
+    EmailTemplates, EmailVerifyData, PasswordChangedData, PasswordResetData,
+};
 use aws_config::SdkConfig;
 use aws_sdk_sesv2::{
     types::{Destination, EmailContent, Template},
     Client,
 };
-use serde::Serialize;
 
 #[derive(Clone)]
 pub struct EmailClient {
@@ -37,24 +39,67 @@ impl EmailClient {
     }
 
     #[tracing::instrument(name = "Building confirmation email content", skip_all)]
-    pub async fn build_email_confirmation(&self, token: &str) -> anyhow::Result<EmailContent> {
+    pub async fn build_email_confirmation(
+        &self,
+        token: &str,
+        expire_in_hours: i64,
+    ) -> anyhow::Result<EmailContent> {
         let confirmation_url = format!("{}/account/verify?token={}", self.frontend_url, token);
-
-        #[derive(Serialize)]
-        struct EmailVerifyData {
-            verification_link: String,
-            code: String,
-        }
 
         let email_data = EmailVerifyData {
             verification_link: confirmation_url,
             code: token.to_string(),
+            expire_in_hours,
         };
 
         let email_content = EmailContent::builder()
             .template(
                 Template::builder()
-                    .template_name("")
+                    .template_name(EmailTemplates::EmailVerify)
+                    .template_data(serde_json::to_string(&email_data).unwrap())
+                    .build(),
+            )
+            .build();
+
+        Ok(email_content)
+    }
+
+    #[tracing::instrument(name = "Building reset password content", skip_all)]
+    pub async fn build_reset_password(
+        &self,
+        token: &str,
+        expire_in_hours: i64,
+    ) -> anyhow::Result<EmailContent> {
+        let confirmation_url = format!("{}/reset-password?token={}", self.frontend_url, token);
+
+        let email_data = PasswordResetData {
+            reset_link: confirmation_url,
+            code: token.to_string(),
+            expire_in_hours,
+        };
+
+        let email_content = EmailContent::builder()
+            .template(
+                Template::builder()
+                    .template_name(EmailTemplates::PasswordReset)
+                    .template_data(serde_json::to_string(&email_data).unwrap())
+                    .build(),
+            )
+            .build();
+
+        Ok(email_content)
+    }
+
+    #[tracing::instrument(name = "Building password changed content", skip_all)]
+    pub async fn build_password_changed(&self, email: &str) -> anyhow::Result<EmailContent> {
+        let email_data = PasswordChangedData {
+            email: email.to_string(),
+        };
+
+        let email_content = EmailContent::builder()
+            .template(
+                Template::builder()
+                    .template_name(EmailTemplates::PasswordChanged)
                     .template_data(serde_json::to_string(&email_data).unwrap())
                     .build(),
             )

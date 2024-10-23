@@ -9,8 +9,10 @@ argon2 = "0.5.3"
 aws-config = "1.5.8"
 aws-sdk-sesv2 = "1.50.0"
 axum = { version = "0.7.7", features = ["macros", "json"] }
+base32 = "0.5.1"
 clap = { version = "4.5.20", features = ["derive", "env"] }
 dotenvy = "0.15.7"
+hex = "0.4.3"
 hmac = "0.12.1"
 jwt = "0.16.0"
 rand = "0.8.5"

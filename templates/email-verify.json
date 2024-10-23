@@ -2,7 +2,7 @@
   "Template": {
     "TemplateName": "EmailVerify",
     "SubjectPart": "Verify Your Email Address",
-    "HtmlPart": "<p>Please verify your email address by clicking the link below:</p><p><a href='{{verification_link}}'>Verify Email</a></p><p>Or use this code below</p><p>{{code}}</p>",
-    "TextPart": "Please verify your email address by clicking this link:\r\n{{verification_link}}, or use this code:\r\n{{code}}"
+    "HtmlPart": "<p>Please verify your email address by clicking the link below:</p><p><a href='{{verification_link}}'>Verify Email</a></p><p>Or use this code below</p><p>{{code}}</p><p>The link is valid for {{expire_in_hours}} hours.</p>",
+    "TextPart": "Please verify your email address by clicking this link:\r\n{{verification_link}}, or use this code:\r\n{{code}}\r\nThe link is valid for {{expire_in_hours}} hours."
   }
 }

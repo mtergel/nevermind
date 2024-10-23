@@ -3,6 +3,7 @@ use axum::{
     Router,
 };
 use email::{add_email, delete_user_email, list_user_email, update_email_to_primary};
+use password::{forgot_password, reset_password};
 use register::register_user;
 use utoipa::OpenApi;
 use verify::verify_email;
@@ -10,6 +11,7 @@ use verify::verify_email;
 use crate::app::ApiContext;
 
 pub mod email;
+pub mod password;
 pub mod register;
 pub mod verify;
 
@@ -20,6 +22,8 @@ pub fn router() -> Router<ApiContext> {
         .route("/auth/emails/:id", delete(delete_user_email))
         .route("/auth/emails/verify/:token", post(verify_email))
         .route("/auth/emails/:id/primary", patch(update_email_to_primary))
+        .route("/auth/forgot-password", post(forgot_password))
+        .route("/auth/reset-password", post(reset_password))
 }
 
 #[derive(OpenApi)]
@@ -29,6 +33,8 @@ pub fn router() -> Router<ApiContext> {
     email::list_user_email,
     email::delete_user_email,
     verify::verify_email,
-    email::update_email_to_primary
+    email::update_email_to_primary,
+    password::forgot_password,
+    password::reset_password
 ))]
 pub struct AuthApi;

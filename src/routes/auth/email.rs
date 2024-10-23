@@ -17,6 +17,7 @@ use crate::{
         utils::{types::Timestamptz, validation::validate_password},
         ApiContext,
     },
+    config::Stage,
     routes::docs::EMAIL_TAG,
 };
 
@@ -92,6 +93,7 @@ pub async fn add_email(
 
     let otp_manager = EmailVerifyOtp {
         user_id: auth_user.user_id,
+        should_hash: ctx.config.stage == Stage::Prod,
     };
 
     let token = otp_manager.generate_otp();

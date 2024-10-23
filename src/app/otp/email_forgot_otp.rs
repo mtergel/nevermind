@@ -2,21 +2,20 @@ use crate::app::email::client::EmailClient;
 
 use super::OtpManager;
 use anyhow::Context;
-use rand::Rng;
+use base32::encode;
+use rand::RngCore;
 use redis::{AsyncCommands, Client};
 use sha2::{Digest, Sha256};
-use uuid::Uuid;
 
-pub const EMAIL_VERIFY_OTP_LENGTH: time::Duration = time::Duration::days(1);
+pub const EMAIL_FORGOT_OTP_LENGTH: time::Duration = time::Duration::hours(1);
 
-pub struct EmailVerifyOtp {
-    pub user_id: Uuid,
+pub struct EmailForgotOtp {
     pub should_hash: bool,
 }
 
-impl EmailVerifyOtp {
+impl EmailForgotOtp {
     fn get_db_key(&self, token: &str) -> String {
-        format!("user:{}:email:{}", self.user_id, token)
+        format!("reset:{}", token)
     }
 
     fn get_hashed_key(&self, token: &str) -> String {
@@ -31,7 +30,7 @@ impl EmailVerifyOtp {
         hex::encode(hashed_token)
     }
 
-    #[tracing::instrument(name = "Storing verify OTP", skip_all)]
+    #[tracing::instrument(name = "Storing forgot OTP", skip_all, fields(email = ?email))]
     pub async fn store_data(
         &self,
         token: &str,
@@ -50,7 +49,7 @@ impl EmailVerifyOtp {
             .set_ex(
                 self.get_db_key(&hashed_token),
                 email,
-                EMAIL_VERIFY_OTP_LENGTH.whole_seconds() as u64,
+                EMAIL_FORGOT_OTP_LENGTH.whole_seconds() as u64,
             )
             .await
             .context("failed to store value to redis")?;
@@ -58,7 +57,7 @@ impl EmailVerifyOtp {
         Ok(())
     }
 
-    #[tracing::instrument(name = "Consume verify OTP", skip_all, fields(token = ?token))]
+    #[tracing::instrument(name = "Consume forgot OTP", skip_all, fields(token = ?token))]
     pub async fn get_data(&self, token: &str, client: &Client) -> anyhow::Result<Option<String>> {
         let mut conn = client
             .get_multiplexed_tokio_connection()
@@ -81,10 +80,10 @@ impl EmailVerifyOtp {
         Ok(res)
     }
 
-    #[tracing::instrument(name = "Sending confirmation email", skip_all, fields(email = ?email))]
+    #[tracing::instrument(name = "Sending reset password instruction email", skip_all, fields(email = ?email))]
     pub async fn send_email(client: &EmailClient, token: &str, email: &str) -> anyhow::Result<()> {
         let email_content = client
-            .build_email_confirmation(token, EMAIL_VERIFY_OTP_LENGTH.whole_hours())
+            .build_reset_password(token, EMAIL_FORGOT_OTP_LENGTH.whole_hours())
             .await?;
         client.send_email(email, email_content).await?;
 
@@ -92,17 +91,14 @@ impl EmailVerifyOtp {
     }
 }
 
-impl OtpManager for EmailVerifyOtp {
-    #[tracing::instrument(name = "Generating email verify OTP", skip_all)]
+impl OtpManager for EmailForgotOtp {
+    #[tracing::instrument(name = "Generating reset password OTP", skip_all)]
     fn generate_otp(&self) -> String {
-        let characters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
-        let code: String = (0..8)
-            .map(|_| {
-                let idx = rand::thread_rng().gen_range(0..characters.len());
-                characters.chars().nth(idx).unwrap()
-            })
-            .collect();
+        // Generate 15 random bytes (15 bytes * 8 bits = 120 bits of entropy)
+        let mut bytes = [0u8; 15];
+        rand::thread_rng().fill_bytes(&mut bytes);
 
-        code
+        // Encode the random bytes in Base32
+        encode(base32::Alphabet::Rfc4648 { padding: true }, &bytes)
     }
 }
