@@ -3,6 +3,7 @@ use secrecy::SecretString;
 use serde::Deserialize;
 use sqlx::PgPool;
 use utoipa::ToSchema;
+use uuid::Uuid;
 use validator::Validate;
 
 use crate::{
@@ -92,31 +93,7 @@ pub async fn reset_password(
     match otp_manager.get_data(&req.token, &ctx.redis_client).await? {
         Some(email) => {
             let password_hash = compute_password_hash(req.new_password).await?;
-            let mut tx = ctx.db_pool.begin().await?;
-            let user_id = sqlx::query_scalar!(
-                r#"
-                    select user_id
-                    from email
-                    where email = $1
-                "#,
-                email
-            )
-            .fetch_one(&mut *tx)
-            .await?;
-
-            sqlx::query!(
-                r#"
-                    update "user"
-                    set password_hash = $1
-                    where user_id = $2
-                "#,
-                password_hash,
-                user_id
-            )
-            .execute(&mut *tx)
-            .await?;
-
-            tx.commit().await?;
+            let user_id = reset_user_password(&password_hash, &email, &ctx.db_pool).await?;
 
             let primary_email = sqlx::query_scalar!(
                 r#"
@@ -160,4 +137,38 @@ async fn check_email(email: &str, pool: &PgPool) -> Result<bool, AppError> {
             e => Err(AppError::from(e)),
         },
     }
+}
+
+#[tracing::instrument(name = "Updating password of user using email", skip_all)]
+async fn reset_user_password(hash: &str, email: &str, pool: &PgPool) -> Result<Uuid, AppError> {
+    let mut tx = pool.begin().await?;
+
+    let user_id = sqlx::query_scalar!(
+        r#"
+            select user_id
+            from email
+            where email = $1
+        "#,
+        email
+    )
+    .fetch_one(&mut *tx)
+    .await?;
+
+    sqlx::query!(
+        r#"
+            update "user"
+            set password_hash = $1
+            where user_id = $2
+        "#,
+        hash,
+        user_id
+    )
+    .execute(&mut *tx)
+    .await?;
+
+    tx.commit().await?;
+
+    dbg!(user_id);
+
+    Ok(user_id)
 }
