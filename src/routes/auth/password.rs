@@ -177,7 +177,7 @@ async fn send_password_notification_email(
     .fetch_one(pool)
     .await
     {
-        if let Ok(email_content) = email_client.build_password_changed(&cause_email).await {
+        if let Ok(email_content) = email_client.build_password_changed(cause_email).await {
             let _ = email_client.send_email(&primary_email, email_content).await;
         }
     }
