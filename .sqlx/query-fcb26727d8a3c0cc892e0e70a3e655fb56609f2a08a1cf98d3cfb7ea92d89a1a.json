@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "\n                    select email\n                    from email\n                    where user_id = $1 and is_primary = true\n                ",
+  "query": "\n            select email\n            from email\n            where user_id = $1 and is_primary = true\n        ",
   "describe": {
     "columns": [
       {
@@ -18,5 +18,5 @@
       false
     ]
   },
-  "hash": "bf5a75c9c9350d6d282fa25752ca6c410f61e581d5e031c3113b2b9893f45edc"
+  "hash": "fcb26727d8a3c0cc892e0e70a3e655fb56609f2a08a1cf98d3cfb7ea92d89a1a"
 }

@@ -9,6 +9,7 @@ use validator::Validate;
 use crate::{
     app::{
         auth::password::compute_password_hash,
+        email::client::EmailClient,
         error::AppError,
         extrator::ValidatedJson,
         otp::{email_forgot_otp::EmailForgotOtp, OtpManager},
@@ -95,21 +96,8 @@ pub async fn reset_password(
             let password_hash = compute_password_hash(req.new_password).await?;
             let user_id = reset_user_password(&password_hash, &email, &ctx.db_pool).await?;
 
-            let primary_email = sqlx::query_scalar!(
-                r#"
-                    select email
-                    from email
-                    where user_id = $1 and is_primary = true
-                "#,
-                user_id
-            )
-            .fetch_one(&*ctx.db_pool)
-            .await?;
-
-            let email_content = ctx.email_client.build_password_changed(&email).await?;
-            ctx.email_client
-                .send_email(&primary_email, email_content)
-                .await?;
+            send_password_notification_email(&user_id, &ctx.db_pool, &ctx.email_client, &email)
+                .await;
 
             Ok(StatusCode::NO_CONTENT)
         }
@@ -168,7 +156,29 @@ async fn reset_user_password(hash: &str, email: &str, pool: &PgPool) -> Result<U
 
     tx.commit().await?;
 
-    dbg!(user_id);
-
     Ok(user_id)
+}
+
+#[tracing::instrument(name = "Sending password changed notification", skip_all)]
+async fn send_password_notification_email(
+    user_id: &Uuid,
+    pool: &PgPool,
+    email_client: &EmailClient,
+    cause_email: &str,
+) {
+    if let Ok(primary_email) = sqlx::query_scalar!(
+        r#"
+            select email
+            from email
+            where user_id = $1 and is_primary = true
+        "#,
+        user_id
+    )
+    .fetch_one(pool)
+    .await
+    {
+        if let Ok(email_content) = email_client.build_password_changed(&cause_email).await {
+            let _ = email_client.send_email(&primary_email, email_content).await;
+        }
+    }
 }
