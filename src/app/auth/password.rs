@@ -87,7 +87,7 @@ pub async fn compute_password_hash(password: SecretString) -> Result<String, App
 
         Ok(
             PasswordHash::generate(Argon2::default(), password.expose_secret(), salt.as_salt())
-                .map_err(|e| anyhow::anyhow!("faield to compute password hash: {}", e))?
+                .map_err(|e| anyhow::anyhow!("failed to compute password hash: {}", e))?
                 .to_string(),
         )
     })

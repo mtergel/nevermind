@@ -1,4 +1,4 @@
-use axum::extract::State;
+use axum::{extract::State, http::StatusCode};
 use secrecy::SecretString;
 use serde::Deserialize;
 use sqlx::PgPool;
@@ -84,7 +84,7 @@ pub async fn forgot_password(
 pub async fn reset_password(
     ctx: State<ApiContext>,
     ValidatedJson(req): ValidatedJson<ResetPasswordInput>,
-) -> Result<(), AppError> {
+) -> Result<StatusCode, AppError> {
     let otp_manager = EmailForgotOtp {
         should_hash: ctx.config.stage == Stage::Prod,
     };
@@ -97,7 +97,6 @@ pub async fn reset_password(
                 r#"
                     select user_id
                     from email
-                    inner join "user" using (user_id)
                     where email = $1
                 "#,
                 email
@@ -135,7 +134,7 @@ pub async fn reset_password(
                 .send_email(&primary_email, email_content)
                 .await?;
 
-            Ok(())
+            Ok(StatusCode::NO_CONTENT)
         }
 
         None => return Err(AppError::NotFound),

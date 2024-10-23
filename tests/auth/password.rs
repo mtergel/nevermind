@@ -1,6 +1,7 @@
 use crate::common::helpers::{spawn_app, TestApp};
 use fake::{faker::internet::en::Password, Fake};
 use redis::AsyncCommands;
+use reqwest::StatusCode;
 
 #[tokio::test]
 async fn forgot_password_works() {
@@ -29,7 +30,7 @@ async fn reset_password_works() {
         .await
         .expect("failed to execute request");
 
-    assert!(res.status().is_success());
+    assert_eq!(res.status(), StatusCode::NO_CONTENT);
 
     let login_body = serde_json::json!({
         "grant_type": "password",
