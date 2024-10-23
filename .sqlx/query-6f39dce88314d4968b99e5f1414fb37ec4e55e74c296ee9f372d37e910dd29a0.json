@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n                    update \"user\"\n                    set password_hash = $1\n                    where user_id = $2\n                ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Uuid"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "6f39dce88314d4968b99e5f1414fb37ec4e55e74c296ee9f372d37e910dd29a0"
+}
