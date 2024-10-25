@@ -45,6 +45,12 @@ pub struct AppConfig {
 
     #[clap(long, env)]
     pub redis_uri: SecretString,
+
+    #[clap(long, env)]
+    pub aws_s3_bucket: String,
+
+    #[clap(long, env)]
+    pub aws_cdn: String,
 }
 
 #[derive(clap::ValueEnum, Debug, Clone, PartialEq)]

@@ -24,16 +24,16 @@ impl EmailClient {
     /// It should only be called once, and shared
     pub fn new(
         sdk_config: &SdkConfig,
-        verified_email: String,
-        frontend_url: String,
+        verified_email: &str,
+        frontend_url: &str,
         should_mock: bool,
     ) -> Self {
         let ses_client = Client::new(sdk_config);
 
         EmailClient {
             ses_client,
-            verified_email,
-            frontend_url,
+            verified_email: verified_email.to_string(),
+            frontend_url: frontend_url.to_string(),
             should_mock,
         }
     }
