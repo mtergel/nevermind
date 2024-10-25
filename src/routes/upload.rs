@@ -1,7 +1,7 @@
 use std::{collections::HashMap, str::FromStr};
 
 use axum::{extract::State, routing::post, Json, Router};
-use mime::Mime;
+use mime2::Mime;
 use serde::{Deserialize, Serialize};
 use utoipa::{OpenApi, ToSchema};
 use validator::{Validate, ValidateArgs, ValidationError};

@@ -1,4 +1,4 @@
-use mime::Mime;
+use mime2::Mime;
 use serde::{Deserialize, Serialize};
 use utoipa::ToSchema;
 
@@ -24,7 +24,11 @@ impl S3Path {
 
     pub fn is_allowed_type(&self, mime: &Mime) -> bool {
         match self {
-            S3Path::Profile => mime.type_() == mime::IMAGE,
+            S3Path::Profile => {
+                let types = vec![mime2::image::JPEG, mime2::image::PNG, mime2::image::WEBP];
+
+                types.contains(mime)
+            }
         }
     }
 }

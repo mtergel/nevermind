@@ -39,7 +39,7 @@ async fn upload_profile_fails_for_wrong_file_type() {
     let img_body = serde_json::json!({
         "path": S3Path::Profile,
         "file_name": random_file_name,
-        "file_type": "text/html",
+        "file_type": "image/avif",
         "file_size": 250_000
     });
 
