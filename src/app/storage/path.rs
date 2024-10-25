@@ -25,7 +25,7 @@ impl S3Path {
     pub fn is_allowed_type(&self, mime: &Mime) -> bool {
         match self {
             S3Path::Profile => {
-                let types = vec![mime2::image::JPEG, mime2::image::PNG, mime2::image::WEBP];
+                let types = [mime2::image::JPEG, mime2::image::PNG, mime2::image::WEBP];
 
                 types.contains(mime)
             }
