@@ -74,6 +74,8 @@ where
             .await
             .map_err(|_| AppError::Unauthorized)?;
 
+        tracing::Span::current().record("user_id", tracing::field::display(&user.sub));
+
         Ok(AuthUser {
             user_id: user.sub,
             session_id: user.sid,
