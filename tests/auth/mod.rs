@@ -4,3 +4,4 @@ pub mod password;
 pub mod refresh_token_flow;
 pub mod register;
 pub mod verify;
+pub mod profile;
