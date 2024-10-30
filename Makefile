@@ -32,7 +32,7 @@ build:
 # Output is piped through `bunyan` for better formatted logs.
 .PHONY: dev
 dev: build
-	cargo watch -x run | bunyan
+	RUST_LOG=debug,tower_http=debug,axum::rejection=trace cargo watch -x run | bunyan
 
 # Run code linting using `cargo clippy`.
 # It checks for common mistakes and code style issues.

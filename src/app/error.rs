@@ -58,7 +58,6 @@ impl IntoResponse for AppError {
                     // for the `401 Unauthorized` response code:
                     // https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/401
                     [(WWW_AUTHENTICATE, "Bearer")],
-                    self.to_string(),
                 )
                     .into_response();
             }
@@ -92,7 +91,7 @@ impl IntoResponse for AppError {
 
             Self::Sqlx(ref e) => {
                 if let sqlx::Error::RowNotFound = e {
-                    return (StatusCode::NOT_FOUND, e.to_string()).into_response();
+                    return (StatusCode::NOT_FOUND).into_response();
                 }
 
                 tracing::error!("Database error: {:?}", e)
@@ -105,7 +104,7 @@ impl IntoResponse for AppError {
             _ => (),
         }
 
-        (self.status_code(), self.to_string()).into_response()
+        (self.status_code()).into_response()
     }
 }
 
