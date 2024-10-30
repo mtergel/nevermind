@@ -9,7 +9,7 @@ async fn get_user_profile_works() {
 
     let res = app
         .api_client
-        .post(&format!("{}/auth/me", &app.address))
+        .get(&format!("{}/auth/me", &app.address))
         .header("Authorization", "Bearer ".to_owned() + &token)
         .send()
         .await
