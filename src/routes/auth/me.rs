@@ -12,6 +12,8 @@ pub struct MeResponse {
     username: String,
     email: String,
     email_verified: bool,
+    bio: String,
+    image: Option<String>,
 }
 
 #[utoipa::path(
@@ -35,7 +37,8 @@ pub async fn get_me_profile(
 ) -> Result<Json<MeResponse>, AppError> {
     let res = sqlx::query!(
         r#"
-            select u.user_id, u.username, e.email, e.verified
+            select u.user_id, u.username, e.email, e.verified,
+            u.bio, u.image
             from email e
             inner join "user" u using (user_id)
             where e.user_id = $1 and e.is_primary = true
@@ -49,5 +52,7 @@ pub async fn get_me_profile(
         username: res.username,
         email: res.email,
         email_verified: res.verified,
+        bio: res.bio,
+        image: res.image,
     }))
 }
