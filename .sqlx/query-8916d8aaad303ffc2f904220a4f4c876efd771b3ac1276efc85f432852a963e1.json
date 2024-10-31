@@ -1,0 +1,29 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            select verified, confirmation_sent_at\n            from email\n            where email = $1 and user_id = $2\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "verified",
+        "type_info": "Bool"
+      },
+      {
+        "ordinal": 1,
+        "name": "confirmation_sent_at",
+        "type_info": "Timestamptz"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false,
+      true
+    ]
+  },
+  "hash": "8916d8aaad303ffc2f904220a4f4c876efd771b3ac1276efc85f432852a963e1"
+}

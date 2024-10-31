@@ -7,7 +7,7 @@ use me::get_me_profile;
 use password::{forgot_password, reset_password};
 use register::register_user;
 use utoipa::OpenApi;
-use verify::verify_email;
+use verify::{resend_email_verification, verify_email};
 
 use crate::app::ApiContext;
 
@@ -24,6 +24,7 @@ pub fn router() -> Router<ApiContext> {
         .route("/auth/emails", post(add_email).get(list_user_email))
         .route("/auth/emails/:id", delete(delete_user_email))
         .route("/auth/emails/verify/:token", post(verify_email))
+        .route("/auth/emails/resend", post(resend_email_verification))
         .route("/auth/emails/:id/primary", patch(update_email_to_primary))
         .route("/auth/forgot-password", post(forgot_password))
         .route("/auth/reset-password", post(reset_password))
