@@ -37,6 +37,7 @@ pub fn router() -> Router<ApiContext> {
     email::list_user_email,
     email::delete_user_email,
     verify::verify_email,
+    verify::resend_email_verification,
     email::update_email_to_primary,
     password::forgot_password,
     password::reset_password,
