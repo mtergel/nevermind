@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            insert into email (email, user_id, confirmation_sent_at)\n            values ($1, $2, now())\n        ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Uuid"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "305521aa8805fc35b39dfc46f9ec88803a130ae65223c13847db6e2758e42349"
+}

@@ -9,6 +9,7 @@ use nevermind::{
     config::AppConfig,
     telemetry::{build_telemetry, register_telemetry},
 };
+use redis::AsyncCommands;
 use serde::Deserialize;
 use sqlx::{Connection, Executor, PgConnection, PgPool};
 use std::sync::LazyLock;
@@ -26,6 +27,11 @@ static TELEMETRY: LazyLock<()> = LazyLock::new(|| {
         register_telemetry(null_telemetry);
     };
 });
+
+#[derive(Debug, Deserialize)]
+struct GrantResponse {
+    pub access_token: String,
+}
 
 pub struct TestApp {
     pub address: String,
@@ -54,11 +60,6 @@ impl TestApp {
             "email": &self.test_user.email,
             "password": &self.test_user.password
         });
-
-        #[derive(Deserialize)]
-        struct GrantResponse {
-            pub access_token: String,
-        }
 
         let res = self
             .api_client
@@ -199,4 +200,85 @@ async fn setup_database(config: &AppConfig) -> PgPool {
         .expect("Failed to migrate the database");
 
     connection_pool
+}
+
+pub struct RegisterNewUserRes {
+    pub access_token: String,
+    pub otp: String,
+    pub new_user: TestUser,
+}
+
+pub async fn register_new_user(app: &TestApp) -> RegisterNewUserRes {
+    let new_user = TestUser::generate();
+
+    let register_body = serde_json::json!({
+        "email": &new_user.email,
+        "username": &new_user.username,
+        "password": &new_user.password
+    });
+
+    let res = app
+        .api_client
+        .post(&format!("{}/auth/users", &app.address))
+        .json(&register_body)
+        .send()
+        .await
+        .expect("failed to execute request");
+
+    assert!(res.status().is_success());
+
+    let login_body = serde_json::json!({
+        "grant_type": "password",
+        "email": &new_user.email,
+        "password": &new_user.password
+    });
+
+    let login_res = app.post_login(&login_body).await;
+    assert!(login_res.status().is_success());
+
+    let user_tokens = login_res.json::<GrantResponse>().await.unwrap();
+
+    let user_id = sqlx::query_scalar!(
+        r#"
+            select user_id
+            from "user"
+            where username = $1
+        "#,
+        new_user.username
+    )
+    .fetch_one(&app.db_pool)
+    .await
+    .unwrap();
+
+    let mut conn = app
+        .redis_client
+        .get_multiplexed_tokio_connection()
+        .await
+        .unwrap();
+    let key = format!("user:{}:email:*", user_id);
+    let otps: Vec<String> = conn
+        .keys(key)
+        .await
+        .expect("not error when connecting to redis");
+
+    let current_otp = get_first_otp(&otps);
+    assert!(current_otp.is_some(), "Expected a otp but found None");
+
+    let current_otp = current_otp.unwrap();
+
+    RegisterNewUserRes {
+        access_token: user_tokens.access_token,
+        otp: current_otp,
+        new_user,
+    }
+}
+
+fn get_first_otp(vec: &[String]) -> Option<String> {
+    if let Some(first) = vec.get(0) {
+        let parts: Vec<&str> = first.split(':').collect();
+        if !parts.is_empty() {
+            return Some(parts.last().unwrap().to_string());
+        }
+    }
+    None
 }

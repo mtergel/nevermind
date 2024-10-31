@@ -65,8 +65,8 @@ pub async fn register_user(
 
     sqlx::query!(
         r#"
-            insert into email (user_id, email, is_primary)
-            values ($1, $2, true)
+            insert into email (user_id, email, is_primary, confirmation_sent_at)
+            values ($1, $2, true, now())
         "#,
         user_id,
         req.email,

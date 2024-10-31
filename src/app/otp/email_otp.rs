@@ -81,6 +81,31 @@ impl EmailVerifyOtp {
         Ok(res)
     }
 
+    #[tracing::instrument(name = "Get verify otps", skip_all, fields(email = ?email))]
+    pub async fn get_keys(&self, client: &Client, email: &str) -> anyhow::Result<Vec<String>> {
+        let mut conn = client
+            .get_multiplexed_tokio_connection()
+            .await
+            .context("failed to connect to redis")
+            .unwrap();
+
+        let pattern = self.get_db_key("*");
+        let mut iter: redis::AsyncIter<String> = conn
+            .scan_match(pattern)
+            .await
+            .expect("failed to scan iterate to redis");
+
+        let mut otps: Vec<String> = Vec::new();
+
+        while let Some(otp) = iter.next_item().await {
+            otps.push(otp);
+        }
+
+        drop(iter);
+
+        Ok(otps)
+    }
+
     #[tracing::instrument(name = "Sending confirmation email", skip_all, fields(email = ?email))]
     pub async fn send_email(client: &EmailClient, token: &str, email: &str) -> anyhow::Result<()> {
         let email_content = client

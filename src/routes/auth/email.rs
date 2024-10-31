@@ -79,8 +79,8 @@ pub async fn add_email(
 
     sqlx::query!(
         r#"
-            insert into email (email, user_id)
-            values ($1, $2)
+            insert into email (email, user_id, confirmation_sent_at)
+            values ($1, $2, now())
         "#,
         req.new_email,
         auth_user.user_id

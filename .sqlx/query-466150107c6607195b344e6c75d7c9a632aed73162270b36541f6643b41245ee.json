@@ -1,0 +1,14 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            update email \n            set verified = true, confirmation_sent_at = null\n            where email = $1                \n        ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "466150107c6607195b344e6c75d7c9a632aed73162270b36541f6643b41245ee"
+}
