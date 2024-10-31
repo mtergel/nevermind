@@ -85,7 +85,7 @@ async fn oauth_token(
 
     let metadata = SessionMetadata {
         device_name: headers
-            .get("User-Agent")
+            .get("X-User-Agent")
             .and_then(|hv| hv.to_str().ok())
             .map(|s| s.to_string()),
         ip: headers
