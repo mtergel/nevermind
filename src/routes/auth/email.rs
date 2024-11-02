@@ -3,8 +3,10 @@ use axum::{
     http::StatusCode,
     Json,
 };
+use futures::TryStreamExt;
 use secrecy::SecretString;
 use serde::{Deserialize, Serialize};
+use time::OffsetDateTime;
 use utoipa::ToSchema;
 use uuid::Uuid;
 use validator::Validate;
@@ -37,6 +39,30 @@ pub struct Email {
     is_primary: bool,
     #[schema(value_type = String, format = DateTime)]
     created_at: Timestamptz,
+    #[schema(value_type = Option<String>, format = DateTime)]
+    confirmation_sent_at: Option<Timestamptz>,
+}
+
+struct EmailFromQuery {
+    email_id: String,
+    email: String,
+    verified: bool,
+    is_primary: bool,
+    created_at: OffsetDateTime,
+    confirmation_sent_at: Option<OffsetDateTime>,
+}
+
+impl EmailFromQuery {
+    fn into_email(self) -> Email {
+        Email {
+            email_id: self.email_id,
+            email: self.email,
+            verified: self.verified,
+            is_primary: self.is_primary,
+            created_at: Timestamptz(self.created_at),
+            confirmation_sent_at: self.confirmation_sent_at.map(Timestamptz),
+        }
+    }
 }
 
 #[utoipa::path(
@@ -201,9 +227,10 @@ pub async fn list_user_email(
     ctx: State<ApiContext>,
 ) -> Result<Json<Vec<Email>>, AppError> {
     let rows = sqlx::query_as!(
-        Email,
+        EmailFromQuery,
         r#"
-            select email_id, email, verified, is_primary, created_at 
+            select email_id, email, verified, 
+            is_primary, created_at, confirmation_sent_at
             from email
             where user_id = $1
             limit $2
@@ -211,9 +238,10 @@ pub async fn list_user_email(
         auth_user.user_id,
         ctx.config.app_application_account_email_limit as i64
     )
-    .fetch_all(&*ctx.db_pool)
-    .await
-    .unwrap_or_default();
+    .fetch(&*ctx.db_pool)
+    .map_ok(EmailFromQuery::into_email)
+    .try_collect()
+    .await?;
 
     Ok(Json(rows))
 }
