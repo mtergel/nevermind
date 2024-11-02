@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "\n            select email_id, email, verified, is_primary, created_at \n            from email\n            where user_id = $1\n            limit $2\n        ",
+  "query": "\n            select email_id, email, verified, \n            is_primary, created_at, confirmation_sent_at\n            from email\n            where user_id = $1\n            limit $2\n        ",
   "describe": {
     "columns": [
       {
@@ -27,6 +27,11 @@
         "ordinal": 4,
         "name": "created_at",
         "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 5,
+        "name": "confirmation_sent_at",
+        "type_info": "Timestamptz"
       }
     ],
     "parameters": {
@@ -40,8 +45,9 @@
       false,
       false,
       false,
-      false
+      false,
+      true
     ]
   },
-  "hash": "c59bbf55e60c619c7f9eecabacb518b3392041e46fff21e5bce32d800d712f9c"
+  "hash": "29c06ea473bedaa504d2a2b9f22d62b5b670b66603df27c1a4b129a7c3a0f218"
 }
