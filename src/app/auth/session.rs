@@ -107,14 +107,14 @@ impl Session {
             .await
             .context("failed to get values from redis")?;
 
-        let filtered_sessions: Vec<String> = values.into_iter().filter_map(|x| x).collect();
+        let filtered_sessions: Vec<String> = values.into_iter().flatten().collect();
         let sessions: anyhow::Result<Vec<SessionData>> = filtered_sessions
             .into_iter()
             .map(|x| {
                 let data: Vec<SessionData> =
                     serde_json::from_str(&x).context("failed to parse redis value")?;
 
-                data.get(0).cloned().context("no session data found")
+                data.first().cloned().context("no session data found")
             })
             .collect();
 
