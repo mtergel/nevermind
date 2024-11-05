@@ -1,6 +1,7 @@
 use reqwest::StatusCode;
 
-use crate::common::helpers::spawn_app;
+pub mod common;
+use common::helpers::spawn_app;
 
 #[tokio::test]
 async fn login_works() {

@@ -1,9 +1,9 @@
-pub mod common;
 use fake::{faker::filesystem::en::FileName, Fake};
 use nevermind::app::storage::path::S3Path;
 use reqwest::StatusCode;
 
-use crate::common::helpers::spawn_app;
+pub mod common;
+use common::helpers::spawn_app;
 
 #[tokio::test]
 async fn upload_profile_works() {

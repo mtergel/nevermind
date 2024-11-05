@@ -29,7 +29,7 @@ static TELEMETRY: LazyLock<()> = LazyLock::new(|| {
 });
 
 #[derive(Debug, Deserialize)]
-struct GrantResponse {
+pub struct GrantResponse {
     pub access_token: String,
 }
 
@@ -129,8 +129,9 @@ impl TestUser {
 }
 
 pub async fn spawn_app() -> TestApp {
-    // Config setup
-    dotenvy::dotenv().ok();
+    // // Config setup
+    // let res = dotenvy::dotenv().ok();
+    // dbg!("AAA: {}", res);
 
     LazyLock::force(&TELEMETRY);
 
