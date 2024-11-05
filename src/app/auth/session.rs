@@ -100,6 +100,10 @@ impl Session {
 
         drop(iter);
 
+        if keys.is_empty() {
+            return Ok(Vec::new());
+        }
+
         let values: Vec<Option<String>> = redis::cmd("JSON.MGET")
             .arg(&keys)
             .arg("$")
@@ -130,7 +134,7 @@ impl Session {
         metadata: SessionMetadata,
         client: &Client,
         token_manager: &TokenManager,
-    ) -> Result<Tokens, anyhow::Error> {
+    ) -> anyhow::Result<Tokens> {
         let mut conn = client
             .get_multiplexed_tokio_connection()
             .await
@@ -174,7 +178,7 @@ impl Session {
         metadata: SessionMetadata,
         client: &Client,
         token_manager: &TokenManager,
-    ) -> Result<Tokens, anyhow::Error> {
+    ) -> anyhow::Result<Tokens> {
         let mut conn = client
             .get_multiplexed_tokio_connection()
             .await
@@ -210,5 +214,21 @@ impl Session {
             refresh_token,
             expires_in: ACCESS_TOKEN_LENGTH.whole_seconds() as u64,
         })
+    }
+
+    #[tracing::instrument(name = "Revoke session", skip_all)]
+    pub async fn revoke(&self, client: &Client) -> anyhow::Result<()> {
+        let mut conn = client
+            .get_multiplexed_tokio_connection()
+            .await
+            .context("failed to connect to redis")
+            .unwrap();
+
+        let _: () = conn
+            .del(self.get_user_session_key())
+            .await
+            .expect("failed to delete key");
+
+        Ok(())
     }
 }
