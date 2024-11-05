@@ -11,6 +11,7 @@ pub fn router() -> Router<ApiContext> {
 
 pub const AUTH_TAG: &str = "auth";
 pub const EMAIL_TAG: &str = "email";
+pub const SESSION_TAG: &str = "session";
 pub const UPLOAD_TAG: &str = "upload";
 
 #[derive(OpenApi)]
