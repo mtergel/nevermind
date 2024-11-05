@@ -92,7 +92,9 @@ async fn oauth_token(
             .get("X-Forwarded-For")
             .and_then(|hv| hv.to_str().ok())
             .map(|s| s.to_string()),
-        last_accessed: OffsetDateTime::now_utc().to_string(),
+        last_accessed: OffsetDateTime::now_utc()
+            .format(&time::format_description::well_known::Iso8601::DEFAULT)
+            .unwrap(),
     };
 
     match req.grant_type {
