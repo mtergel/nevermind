@@ -1,6 +1,7 @@
 use reqwest::StatusCode;
 
-use crate::common::helpers::{spawn_app, TestUser};
+pub mod common;
+use common::helpers::{spawn_app, TestUser};
 
 #[tokio::test]
 async fn register_works() {

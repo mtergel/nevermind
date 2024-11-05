@@ -1,6 +1,8 @@
-use crate::common::helpers::{register_new_user, spawn_app};
 use redis::AsyncCommands;
 use reqwest::StatusCode;
+
+pub mod common;
+use common::helpers::{register_new_user, spawn_app};
 
 #[tokio::test]
 async fn verify_email_works_uses_previous_token() {

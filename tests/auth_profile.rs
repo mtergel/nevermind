@@ -1,6 +1,7 @@
 use serde::Deserialize;
 
-use crate::common::helpers::spawn_app;
+pub mod common;
+use common::helpers::spawn_app;
 
 #[tokio::test]
 async fn get_user_profile_works() {

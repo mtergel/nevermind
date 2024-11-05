@@ -1,8 +1,10 @@
-use crate::common::helpers::spawn_app;
 use fake::{faker::internet::en::SafeEmail, Fake};
 use reqwest::StatusCode;
 use serde::Deserialize;
 use uuid::Uuid;
+
+pub mod common;
+use common::helpers::spawn_app;
 
 #[tokio::test]
 async fn add_email_works() {

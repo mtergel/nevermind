@@ -1,9 +1,11 @@
 use core::panic;
 
-use crate::common::helpers::{spawn_app, TestApp};
 use fake::{faker::internet::en::Password, Fake};
 use redis::AsyncCommands;
 use reqwest::StatusCode;
+
+pub mod common;
+use common::helpers::{spawn_app, TestApp};
 
 #[tokio::test]
 async fn forgot_password_works() {

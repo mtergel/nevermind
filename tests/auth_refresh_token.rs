@@ -1,7 +1,8 @@
 use reqwest::StatusCode;
 use serde::{Deserialize, Serialize};
 
-use crate::common::helpers::spawn_app;
+pub mod common;
+use common::helpers::spawn_app;
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct GrantResponse {

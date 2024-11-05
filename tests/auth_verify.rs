@@ -1,6 +1,7 @@
 use reqwest::StatusCode;
 
-use crate::common::helpers::{register_new_user, spawn_app};
+pub mod common;
+use common::helpers::{register_new_user, spawn_app};
 
 #[tokio::test]
 async fn verify_email_works() {
