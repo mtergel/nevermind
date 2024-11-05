@@ -48,6 +48,9 @@ pub async fn list_active_sessions(
     security(
         ("bearerAuth" = [])
     ),
+    params(
+        ("id" = String, Path, description = "Session id")
+    ),
     responses(
         (status = 204, description = "Successful"),
         (status = 401, description = "Unauthorized"),
