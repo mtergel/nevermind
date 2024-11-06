@@ -100,6 +100,7 @@ pub async fn revoke_session(
     params(
         ("id" = String, Path, description = "Session id")
     ),
+    request_body = RevokeSessionByIdInput,
     responses(
         (status = 204, description = "Successful"),
         (status = 401, description = "Unauthorized"),
