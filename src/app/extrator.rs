@@ -3,6 +3,7 @@ use axum::{
     extract::{FromRef, FromRequest, FromRequestParts, Json, Request},
     http::{header::AUTHORIZATION, request::Parts},
 };
+use secrecy::ExposeSecret;
 use serde::de::DeserializeOwned;
 use uuid::Uuid;
 use validator::Validate;
@@ -80,5 +81,38 @@ where
             user_id: user.sub,
             session_id: user.sid,
         })
+    }
+}
+
+const API_KEY_HEADER: &str = "X-Api-Key";
+
+/// Add this as a parameter to a handler function to require a api key to process.
+///
+/// Parses a key from the `X-Api-Key: <token>` header.
+#[derive(Debug)]
+pub struct ApiKey;
+
+#[async_trait]
+impl<S> FromRequestParts<S> for ApiKey
+where
+    S: Send + Sync,
+    ApiContext: FromRef<S>,
+{
+    type Rejection = AppError;
+
+    async fn from_request_parts(parts: &mut Parts, state: &S) -> Result<Self, Self::Rejection> {
+        let ctx: ApiContext = ApiContext::from_ref(state);
+
+        let auth_header = parts
+            .headers
+            .get(API_KEY_HEADER)
+            .ok_or(AppError::Unauthorized)?;
+
+        let token = auth_header.to_str().map_err(|_| AppError::Unauthorized)?;
+        if token != ctx.config.app_api_key.expose_secret() {
+            return Err(AppError::Unauthorized);
+        }
+
+        Ok(ApiKey)
     }
 }

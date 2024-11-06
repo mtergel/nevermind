@@ -25,6 +25,9 @@ pub struct AppConfig {
     #[clap(long, env, default_value_t = 3)]
     pub app_application_account_email_limit: u8,
 
+    #[clap(long, env)]
+    pub app_api_key: SecretString,
+
     #[clap(long, env, default_value = "127.0.0.0")]
     pub db_host: String,
 
