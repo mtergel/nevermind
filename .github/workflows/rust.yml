@@ -15,6 +15,7 @@ env:
 
   APP_APPLICATION_HMAC: super-long-and-secret-random-key-needed-to-verify-message-integrity
   APP_FROM_MAIL: ${{ secrets.APP_FROM_MAIL }}
+  APP_API_KEY: ${{ secrets.APP_API_KEY }}
 
   DB_USERNAME: postgres
   DB_PASSWORD: password
