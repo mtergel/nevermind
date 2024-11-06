@@ -1,3 +1,4 @@
+use secrecy::ExposeSecret;
 use serde::Deserialize;
 
 pub mod common;
@@ -72,6 +73,57 @@ async fn revoke_session_works() {
         .await
         .expect("failed to execute request");
 
+    let res = app
+        .api_client
+        .get(&format!("{}/auth/sessions", &app.address))
+        .header("Authorization", "Bearer ".to_owned() + &token)
+        .send()
+        .await
+        .expect("failed to execute request");
+
+    let data = res.json::<Vec<SessionData>>().await.unwrap();
+    assert_eq!(data.len(), 0);
+}
+
+#[tokio::test]
+async fn revoke_session_by_id_works() {
+    let app = spawn_app().await;
+    let token = app.login_and_get_token().await;
+
+    let res = app
+        .api_client
+        .get(&format!("{}/auth/sessions", &app.address))
+        .header("Authorization", "Bearer ".to_owned() + &token)
+        .send()
+        .await
+        .expect("failed to execute request");
+
+    assert!(res.status().is_success());
+
+    let data = res.json::<Vec<SessionData>>().await.unwrap();
+    assert_eq!(data.len(), 1);
+
+    let revoke_body = serde_json::json!({
+        "user_id": &app.test_user.user_id
+    });
+
+    // send request as machine
+    let res = app
+        .api_client
+        .delete(&format!(
+            "{}/auth/sessions/{}/revoke",
+            &app.address, &data[0].session_id
+        ))
+        .header("X-Api-Key", app.api_key.expose_secret())
+        .json(&revoke_body)
+        .send()
+        .await
+        .expect("failed to execute request");
+
+    dbg!(&res);
+    assert!(res.status().is_success());
+
+    // check again
     let res = app
         .api_client
         .get(&format!("{}/auth/sessions", &app.address))

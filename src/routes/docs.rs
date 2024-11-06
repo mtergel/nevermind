@@ -1,7 +1,7 @@
 use crate::app::ApiContext;
 use crate::routes::{auth::AuthApi, oauth::OAuthApi, upload::UploadApi};
 use axum::{routing::get, Json, Router};
-use utoipa::openapi::security::{HttpAuthScheme, HttpBuilder, SecurityScheme};
+use utoipa::openapi::security::{ApiKey, ApiKeyValue, HttpAuthScheme, HttpBuilder, SecurityScheme};
 use utoipa::openapi::Components;
 use utoipa::{Modify, OpenApi};
 
@@ -52,6 +52,11 @@ impl Modify for SecurityAddon {
                     .bearer_format("JWT")
                     .build(),
             ),
+        );
+
+        openapi.components.as_mut().unwrap().add_security_scheme(
+            "apiKeyAuth",
+            SecurityScheme::ApiKey(ApiKey::Header(ApiKeyValue::new("X-Api-Key"))),
         );
     }
 }

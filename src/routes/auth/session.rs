@@ -1,4 +1,7 @@
-use axum::{extract::State, Json};
+use axum::{
+    extract::{Path, State},
+    Json,
+};
 use secrecy::SecretString;
 use serde::Deserialize;
 use utoipa::ToSchema;
@@ -9,7 +12,7 @@ use crate::{
     app::{
         auth::session::{Session, SessionData},
         error::AppError,
-        extrator::{AuthUser, ValidatedJson},
+        extrator::{ApiKey, AuthUser, ValidatedJson},
         utils::validation::validate_password,
         ApiContext,
     },
@@ -21,6 +24,11 @@ pub struct RevokeSessionInput {
     session_id: Uuid,
     #[schema(value_type = String)]
     password: SecretString,
+}
+
+#[derive(Debug, Deserialize, Validate, ToSchema)]
+pub struct RevokeSessionByIdInput {
+    user_id: Uuid,
 }
 
 #[utoipa::path(
@@ -75,6 +83,39 @@ pub async fn revoke_session(
     let session = Session {
         user_id: auth_user.user_id,
         session_id: req.session_id,
+    };
+
+    session.revoke(&ctx.redis_client).await?;
+
+    Ok(())
+}
+
+#[utoipa::path(
+    delete,
+    path= "/sessions/{id}/revoke",
+    tag = SESSION_TAG,
+    security(
+        ("apiKeyAuth" = [])
+    ),
+    params(
+        ("id" = String, Path, description = "Session id")
+    ),
+    responses(
+        (status = 204, description = "Successful"),
+        (status = 401, description = "Unauthorized"),
+        (status = 500, description = "Internal server error")
+    )
+)]
+#[tracing::instrument(name = "Revoke session by id", skip_all, fields(req = ?req))]
+pub async fn revoke_session_by_id(
+    _api_key: ApiKey,
+    ctx: State<ApiContext>,
+    Path(id): Path<Uuid>,
+    ValidatedJson(req): ValidatedJson<RevokeSessionByIdInput>,
+) -> Result<(), AppError> {
+    let session = Session {
+        user_id: req.user_id,
+        session_id: id,
     };
 
     session.revoke(&ctx.redis_client).await?;

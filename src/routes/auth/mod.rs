@@ -6,7 +6,7 @@ use email::{add_email, delete_user_email, list_user_email, update_email_to_prima
 use me::get_me_profile;
 use password::{forgot_password, reset_password};
 use register::register_user;
-use session::{list_active_sessions, revoke_session};
+use session::{list_active_sessions, revoke_session, revoke_session_by_id};
 use utoipa::OpenApi;
 use verify::{resend_email_verification, verify_email};
 
@@ -32,6 +32,7 @@ pub fn router() -> Router<ApiContext> {
         .route("/auth/reset-password", post(reset_password))
         .route("/auth/sessions", get(list_active_sessions))
         .route("/auth/sessions/revoke", delete(revoke_session))
+        .route("/auth/sessions/:id/revoke", delete(revoke_session_by_id))
 }
 
 #[derive(OpenApi)]
@@ -47,6 +48,7 @@ pub fn router() -> Router<ApiContext> {
     password::reset_password,
     me::get_me_profile,
     session::list_active_sessions,
-    session::revoke_session
+    session::revoke_session,
+    session::revoke_session_by_id
 ))]
 pub struct AuthApi;

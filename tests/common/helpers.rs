@@ -10,6 +10,7 @@ use nevermind::{
     telemetry::{build_telemetry, register_telemetry},
 };
 use redis::AsyncCommands;
+use secrecy::SecretString;
 use serde::Deserialize;
 use sqlx::{Connection, Executor, PgConnection, PgPool};
 use std::sync::LazyLock;
@@ -39,6 +40,7 @@ pub struct TestApp {
     pub db_pool: PgPool,
     pub redis_client: redis::Client,
     pub test_user: TestUser,
+    pub api_key: SecretString,
 }
 
 impl TestApp {
@@ -129,9 +131,7 @@ impl TestUser {
 }
 
 pub async fn spawn_app() -> TestApp {
-    // // Config setup
-    // let res = dotenvy::dotenv().ok();
-    // dbg!("AAA: {}", res);
+    dotenvy::dotenv().ok();
 
     LazyLock::force(&TELEMETRY);
 
@@ -157,15 +157,17 @@ pub async fn spawn_app() -> TestApp {
 
     let db_pool = get_db_connection_pool(&app_config);
     let redis_client = get_redis_client(&app_config);
-    let app = Application::build(app_config).await.unwrap();
-
-    let test_app = TestApp {
-        address: format!("http://localhost:{}", &app.port),
+    let mut test_app = TestApp {
+        address: "".to_string(),
         api_client,
         db_pool,
         redis_client,
         test_user: TestUser::generate(),
+        api_key: app_config.app_api_key.clone(),
     };
+
+    let app = Application::build(app_config).await.unwrap();
+    test_app.address = format!("http://localhost:{}", &app.port);
 
     _ = tokio::spawn(app.run_until_stopped());
 
