@@ -31,7 +31,7 @@ pub fn router() -> Router<ApiContext> {
         .route("/auth/forgot-password", post(forgot_password))
         .route("/auth/reset-password", post(reset_password))
         .route("/auth/sessions", get(list_active_sessions))
-        .route("/auth/sessions/:id/revoke", delete(revoke_session))
+        .route("/auth/sessions/revoke", delete(revoke_session))
 }
 
 #[derive(OpenApi)]

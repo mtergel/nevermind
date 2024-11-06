@@ -22,7 +22,6 @@ pub struct SessionMetadata {
 #[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
 pub struct SessionData {
     pub metadata: SessionMetadata,
-    #[schema(value_type = String)]
     pub session_id: Uuid,
     pub refresh_token: String,
 }
