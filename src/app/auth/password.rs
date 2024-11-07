@@ -27,7 +27,7 @@ pub async fn validate_credentials(
     );
 
     if let Some((stored_user_id, stored_password_hash)) =
-        get_stored_credentials(credentials.email, pool).await?
+        get_stored_credentials(&credentials.email, pool).await?
     {
         user_id = Some(stored_user_id);
         expected_password_hash = stored_password_hash;
@@ -40,9 +40,9 @@ pub async fn validate_credentials(
 
 #[tracing::instrument(name = "Get stored credentials", skip_all)]
 async fn get_stored_credentials(
-    email: String,
+    email: &str,
     pool: &PgPool,
-) -> Result<Option<(Uuid, SecretString)>, anyhow::Error> {
+) -> anyhow::Result<Option<(Uuid, SecretString)>> {
     let row = sqlx::query!(
         r#"
             select u.user_id, u.password_hash
@@ -55,7 +55,7 @@ async fn get_stored_credentials(
     )
     .fetch_optional(pool)
     .await
-    .context("failed to retrieve stored credentials.")?
+    .context("failed to retrieve stored credentials")?
     .map(|u| (u.user_id, SecretString::from(u.password_hash)));
 
     Ok(row)

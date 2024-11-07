@@ -28,6 +28,12 @@ pub struct AppConfig {
     #[clap(long, env)]
     pub app_api_key: SecretString,
 
+    #[clap(long, env)]
+    pub app_github_id: String,
+
+    #[clap(long, env)]
+    pub app_github_secret: SecretString,
+
     #[clap(long, env, default_value = "127.0.0.0")]
     pub db_host: String,
 

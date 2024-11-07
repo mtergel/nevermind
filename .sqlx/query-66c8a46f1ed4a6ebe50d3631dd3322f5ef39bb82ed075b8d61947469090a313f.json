@@ -1,0 +1,16 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            update \"user\"\n                set bio = coalesce(\"user\".bio, $1),\n                image = coalesce(\"user\".image, $2) \n            where user_id = $3\n        ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Text",
+        "Uuid"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "66c8a46f1ed4a6ebe50d3631dd3322f5ef39bb82ed075b8d61947469090a313f"
+}

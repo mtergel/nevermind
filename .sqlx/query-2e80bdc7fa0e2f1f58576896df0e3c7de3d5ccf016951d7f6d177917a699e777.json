@@ -1,0 +1,28 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            insert into social_login (email_id, provider, provider_user_id)\n            values ($1, $2, $3)\n        ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        {
+          "Custom": {
+            "name": "social_provider",
+            "kind": {
+              "Enum": [
+                "google",
+                "facebook",
+                "github",
+                "discord"
+              ]
+            }
+          }
+        },
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "2e80bdc7fa0e2f1f58576896df0e3c7de3d5ccf016951d7f6d177917a699e777"
+}
