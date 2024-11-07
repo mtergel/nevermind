@@ -22,6 +22,7 @@ use crate::{
         },
         error::AppError,
         extrator::ValidatedJson,
+        utils::avatar_generator::generate_avatar,
         ApiContext,
     },
     config::AppConfig,
@@ -272,12 +273,6 @@ async fn assertion_flow(
     token_manager: &TokenManager,
     config: &AppConfig,
 ) -> Result<GrantResponse, AppError> {
-    // For each provider
-    // Handle getting access_token
-    // Then convert access_token to User
-    // Signup new user or merge with existing user
-    // Then return session tokens
-
     match req.provider {
         AssertionProvider::Github => {
             let git_id = ClientId::new(config.app_github_id.clone());
@@ -293,7 +288,7 @@ async fn assertion_flow(
 
             // The user data we'll get back from Github.
             // https://docs.github.com/en/rest/users/users?apiVersion=2022-11-28#get-the-authenticated-user
-            #[derive(Deserialize)]
+            #[derive(Debug, Deserialize)]
             struct GithubUser {
                 pub id: i64,
                 pub email: Option<String>,
@@ -314,6 +309,7 @@ async fn assertion_flow(
             let user_data: GithubUser = http_client
                 .get("https://api.github.com/user")
                 .bearer_auth(token.access_token().secret())
+                .header("User-Agent", "mtergel".to_owned())
                 .send()
                 .await
                 .context("failed to get user details")?
@@ -321,7 +317,47 @@ async fn assertion_flow(
                 .await
                 .context("failed to deserialize as JSON")?;
 
-            match user_data.email {
+            tracing::debug!("User data: {:?}", &user_data);
+
+            let mut user_data_email = user_data.email.clone();
+
+            if user_data_email.is_none() {
+                #[derive(Debug, Deserialize)]
+                struct GithubUserEmail {
+                    pub email: String,
+                    // pub verified: bool,
+                    pub primary: bool,
+                }
+
+                // fetch email
+                let user_email_list: Vec<GithubUserEmail> = http_client
+                    .get("https://api.github.com/user/emails")
+                    .bearer_auth(token.access_token().secret())
+                    .header("User-Agent", "mtergel".to_owned())
+                    .send()
+                    .await
+                    .context("failed to get email list")?
+                    .json::<Vec<GithubUserEmail>>()
+                    .await
+                    .context("failed to deserialize as JSON")?;
+
+                if user_email_list.is_empty() {
+                    tracing::warn!("User email list is empty {:?}", &user_data);
+                } else {
+                    // find primary email
+                    match user_email_list.iter().find(|x| x.primary) {
+                        Some(email) => user_data_email = Some(email.email.clone()),
+
+                        None => {
+                            if let Some(email) = user_email_list.first() {
+                                user_data_email = Some(email.email.clone())
+                            }
+                        }
+                    }
+                }
+            }
+
+            match user_data_email {
                 Some(provider_email) => {
                     let mut tx = pool.begin().await?;
 
@@ -340,7 +376,9 @@ async fn assertion_flow(
                         UpdateUserMetadata {
                             user_id,
                             bio: user_data.bio,
-                            image: user_data.avatar_url,
+                            image: user_data
+                                .avatar_url
+                                .unwrap_or(generate_avatar(&user_id.to_string())),
                         },
                         &mut tx,
                     )
@@ -476,10 +514,22 @@ async fn upsert_email(
     user_id: &Uuid,
     tx: &mut Transaction<'static, Postgres>,
 ) -> anyhow::Result<Uuid> {
+    let primary_email = sqlx::query_scalar!(
+        r#"
+            select email_id
+            from email
+            where user_id = $1 and is_primary = true
+            limit 1
+        "#,
+        user_id
+    )
+    .fetch_optional(&mut **tx)
+    .await?;
+
     let email_id = sqlx::query_scalar!(
         r#"
-            insert into email (email, user_id)
-            values ($1, $2)
+            insert into email (email, user_id, verified, is_primary)
+            values ($1, $2, true, $3)
 
             on conflict (email)
             do update set 
@@ -489,7 +539,8 @@ async fn upsert_email(
             returning email_id
         "#,
         email,
-        user_id
+        user_id,
+        primary_email.is_none()
     )
     .fetch_one(&mut **tx)
     .await?;
@@ -507,6 +558,7 @@ async fn upsert_social_login(
         r#"
             insert into social_login (email_id, provider, provider_user_id)
             values ($1, $2, $3)
+            on conflict (provider_user_id) do nothing
         "#,
         email_id,
         provider as _,
@@ -523,7 +575,7 @@ async fn upsert_social_login(
 struct UpdateUserMetadata {
     user_id: Uuid,
     bio: Option<String>,
-    image: Option<String>,
+    image: String,
 }
 
 async fn update_missing_user_metadata(
