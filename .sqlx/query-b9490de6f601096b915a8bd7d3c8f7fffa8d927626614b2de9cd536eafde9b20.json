@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "\n            select email_id, email, verified, \n            is_primary, created_at, confirmation_sent_at\n            from email\n            where user_id = $1\n            limit $2\n        ",
+  "query": "\n            select \n                e.email_id, \n                e.email, \n                e.verified, \n                e.is_primary, \n                e.created_at, \n                e.confirmation_sent_at\n            from email e\n            where e.user_id = $1\n            limit $2\n        ",
   "describe": {
     "columns": [
       {
@@ -49,5 +49,5 @@
       true
     ]
   },
-  "hash": "29c06ea473bedaa504d2a2b9f22d62b5b670b66603df27c1a4b129a7c3a0f218"
+  "hash": "b9490de6f601096b915a8bd7d3c8f7fffa8d927626614b2de9cd536eafde9b20"
 }
