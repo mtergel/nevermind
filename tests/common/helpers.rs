@@ -10,11 +10,11 @@ use nevermind::{
     telemetry::{build_telemetry, register_telemetry},
 };
 use redis::AsyncCommands;
-use secrecy::SecretString;
 use serde::Deserialize;
 use sqlx::{Connection, Executor, PgConnection, PgPool};
 use std::sync::LazyLock;
 use uuid::Uuid;
+use wiremock::MockServer;
 
 static TELEMETRY: LazyLock<()> = LazyLock::new(|| {
     let default_filter_level = "info".to_string();
@@ -40,7 +40,8 @@ pub struct TestApp {
     pub db_pool: PgPool,
     pub redis_client: redis::Client,
     pub test_user: TestUser,
-    pub api_key: SecretString,
+    pub config: AppConfig,
+    pub oauth_mock_server: MockServer,
 }
 
 impl TestApp {
@@ -135,6 +136,9 @@ pub async fn spawn_app() -> TestApp {
 
     LazyLock::force(&TELEMETRY);
 
+    // lauch github oauth mock
+    let oauth_mock_server = MockServer::start().await;
+
     // Randomise configuration to ensure test isolation
     let app_config = {
         let mut c = AppConfig::parse();
@@ -145,8 +149,14 @@ pub async fn spawn_app() -> TestApp {
         // Use a random OS port
         c.app_application_port = 0;
 
+        c.app_github_api_base_uri = oauth_mock_server.uri();
+        c.app_github_auth_url = format!("{}/login/oauth/authorize", oauth_mock_server.uri());
+        c.app_github_token_url = format!("{}/login/oauth/access_token", oauth_mock_server.uri());
+
         c
     };
+
+    tracing::info!("App config: {:?}", &app_config);
 
     setup_database(&app_config).await;
 
@@ -163,7 +173,8 @@ pub async fn spawn_app() -> TestApp {
         db_pool,
         redis_client,
         test_user: TestUser::generate(),
-        api_key: app_config.app_api_key.clone(),
+        config: app_config.clone(),
+        oauth_mock_server,
     };
 
     let app = Application::build(app_config).await.unwrap();

@@ -114,7 +114,7 @@ async fn revoke_session_by_id_works() {
             "{}/auth/sessions/{}/revoke",
             &app.address, &data[0].session_id
         ))
-        .header("X-Api-Key", app.api_key.expose_secret())
+        .header("X-Api-Key", app.config.app_api_key.expose_secret())
         .json(&revoke_body)
         .send()
         .await

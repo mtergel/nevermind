@@ -1,7 +1,7 @@
 use secrecy::{ExposeSecret, SecretString};
 use sqlx::postgres::{PgConnectOptions, PgSslMode};
 
-#[derive(clap::Parser, Clone)]
+#[derive(clap::Parser, Clone, Debug)]
 pub struct AppConfig {
     #[clap(long, env)]
     pub stage: Stage,
@@ -27,6 +27,25 @@ pub struct AppConfig {
 
     #[clap(long, env)]
     pub app_api_key: SecretString,
+
+    #[clap(long, env, default_value = "https://github.com/login/oauth/authorize")]
+    pub app_github_auth_url: String,
+
+    #[clap(
+        long,
+        env,
+        default_value = "https://github.com/login/oauth/access_token"
+    )]
+    pub app_github_token_url: String,
+
+    #[clap(long, env, default_value = "https://api.github.com")]
+    pub app_github_api_base_uri: String,
+
+    #[clap(long, env)]
+    pub app_github_id: String,
+
+    #[clap(long, env)]
+    pub app_github_secret: SecretString,
 
     #[clap(long, env, default_value = "127.0.0.0")]
     pub db_host: String,

@@ -151,7 +151,7 @@ impl AppError {
 ///     email,
 ///     password_hash
 /// )
-///     .fetch_one(&ctxt.db)
+///     .fetch_one(&ctx.db_pool)
 ///     .await
 ///     .on_constraint("user_username_key", |_| Error::unprocessable_entity([("username", "already taken")]))?;
 /// ```
