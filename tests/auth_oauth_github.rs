@@ -91,6 +91,67 @@ async fn github_oauth_for_existing_user_works() {
     assert_eq!(db_email.provider, AssertionProvider::Github);
 }
 
+#[tokio::test]
+async fn github_oauth_for_existing_social_github_user_works() {
+    let app = spawn_app().await;
+
+    // Add social login for user
+    let email_id = sqlx::query_scalar!(
+        r#"
+            select email_id
+            from email
+            where email = $1
+        "#,
+        app.test_user.email
+    )
+    .fetch_one(&app.db_pool)
+    .await
+    .unwrap();
+
+    let _ = sqlx::query!(
+        r#"
+            insert into social_login (email_id, user_id, provider, provider_user_id)
+            values ($1, $2, $3, $4)
+        "#,
+        email_id,
+        app.test_user.user_id,
+        "github" as _,
+        "123456"
+    )
+    .execute(&app.db_pool)
+    .await;
+
+    // Front end get's code
+    let code = generate_random_code(20);
+
+    let login_body = serde_json::json!({
+        "grant_type": "assertion",
+        "code": code,
+        "provider": "github"
+    });
+
+    setup_oauth_mock(&app.oauth_mock_server, &app.test_user.email).await;
+    let res = app.post_login(&login_body).await;
+    assert!(res.status().is_success());
+
+    let db_email = sqlx::query!(
+        r#"
+            select e.email_id, e.email, e.verified, 
+            p.provider as "provider!: AssertionProvider"
+            from email e
+            inner join social_login p using (email_id)
+            where email = $1
+        "#,
+        app.test_user.email
+    )
+    .fetch_one(&app.db_pool)
+    .await
+    .unwrap();
+
+    assert_eq!(app.test_user.email, db_email.email);
+    assert_eq!(db_email.provider, AssertionProvider::Github);
+}
+
 fn generate_random_code(length: usize) -> String {
     let mut rng = thread_rng();
     let mut hex_string = String::with_capacity(length);
