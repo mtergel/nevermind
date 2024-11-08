@@ -39,6 +39,7 @@ pub struct ApiContext {
     pub token_manager: Arc<TokenManager>,
     pub email_client: Arc<EmailClient>,
     pub storage_client: Arc<S3Storage>,
+    pub http_client: reqwest::Client,
 }
 
 impl Application {
@@ -67,6 +68,12 @@ impl Application {
 
         let storage_client = S3Storage::new(&aws_config, &config.aws_s3_bucket, &config.aws_cdn);
 
+        // it uses arc internally
+        let http_client = reqwest::Client::builder()
+            .redirect(reqwest::redirect::Policy::none())
+            .build()
+            .unwrap();
+
         let api_context = ApiContext {
             config: Arc::new(config),
             db_pool: Arc::new(db_pool),
@@ -74,6 +81,7 @@ impl Application {
             token_manager: Arc::new(token_manager),
             email_client: Arc::new(email_client),
             storage_client: Arc::new(storage_client),
+            http_client,
         };
 
         let app = build_routes(api_context);

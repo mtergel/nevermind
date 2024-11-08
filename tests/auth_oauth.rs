@@ -34,7 +34,7 @@ async fn github_oauth_for_new_user_works() {
 
     let new_user = TestUser::generate();
 
-    setup_oauth_mock(&app.oauth_mock_server, &new_user.email).await;
+    setup_github_oauth_mock(&app.oauth_mock_server, &new_user.email).await;
     let res = app.post_login(&login_body).await;
     assert!(res.status().is_success());
 
@@ -69,7 +69,7 @@ async fn github_oauth_for_existing_user_works() {
         "provider": "github"
     });
 
-    setup_oauth_mock(&app.oauth_mock_server, &app.test_user.email).await;
+    setup_github_oauth_mock(&app.oauth_mock_server, &app.test_user.email).await;
     let res = app.post_login(&login_body).await;
     assert!(res.status().is_success());
 
@@ -130,7 +130,7 @@ async fn github_oauth_for_existing_social_github_user_works() {
         "provider": "github"
     });
 
-    setup_oauth_mock(&app.oauth_mock_server, &app.test_user.email).await;
+    setup_github_oauth_mock(&app.oauth_mock_server, &app.test_user.email).await;
     let res = app.post_login(&login_body).await;
     assert!(res.status().is_success());
 
@@ -152,6 +152,104 @@ async fn github_oauth_for_existing_social_github_user_works() {
     assert_eq!(db_email.provider, AssertionProvider::Github);
 }
 
+#[tokio::test]
+async fn discord_oauth_for_new_user_works() {
+    let app = spawn_app().await;
+
+    // Front end get's code
+    let code = generate_random_code(32);
+
+    let login_body = serde_json::json!({
+        "grant_type": "assertion",
+        "code": code,
+        "provider": "discord"
+    });
+
+    let new_user = TestUser::generate();
+
+    setup_discord_oauth_mock(&app.oauth_mock_server, &new_user.email).await;
+    let res = app.post_login(&login_body).await;
+    assert!(res.status().is_success());
+
+    let db_email = sqlx::query!(
+        r#"
+            select e.email_id, e.email, e.verified, 
+            p.provider as "provider!: AssertionProvider"
+            from email e
+            inner join social_login p using (email_id)
+            where email = $1
+        "#,
+        new_user.email
+    )
+    .fetch_one(&app.db_pool)
+    .await
+    .unwrap();
+
+    assert_eq!(new_user.email, db_email.email);
+    assert_eq!(db_email.provider, AssertionProvider::Discord);
+}
+
+#[tokio::test]
+async fn discord_oauth_for_existing_social_github_user_works() {
+    let app = spawn_app().await;
+
+    // Add social login for user
+    let email_id = sqlx::query_scalar!(
+        r#"
+            select email_id
+            from email
+            where email = $1
+        "#,
+        app.test_user.email
+    )
+    .fetch_one(&app.db_pool)
+    .await
+    .unwrap();
+
+    let _ = sqlx::query!(
+        r#"
+            insert into social_login (email_id, user_id, provider, provider_user_id)
+            values ($1, $2, $3, $4)
+        "#,
+        email_id,
+        app.test_user.user_id,
+        "github" as _,
+        "123456"
+    )
+    .execute(&app.db_pool)
+    .await;
+
+    // Front end get's code
+    let code = generate_random_code(32);
+
+    let login_body = serde_json::json!({
+        "grant_type": "assertion",
+        "code": code,
+        "provider": "discord"
+    });
+
+    setup_discord_oauth_mock(&app.oauth_mock_server, &app.test_user.email).await;
+    let res = app.post_login(&login_body).await;
+    assert!(res.status().is_success());
+
+    let db_email = sqlx::query!(
+        r#"
+            select e.email_id, e.email, e.verified, 
+            p.provider as "provider!: AssertionProvider"
+            from email e
+            inner join social_login p using (email_id)
+            where email = $1
+        "#,
+        app.test_user.email
+    )
+    .fetch_one(&app.db_pool)
+    .await
+    .unwrap();
+
+    assert_eq!(app.test_user.email, db_email.email);
+    assert_eq!(db_email.provider, AssertionProvider::Discord);
+}
+
 fn generate_random_code(length: usize) -> String {
     let mut rng = thread_rng();
     let mut hex_string = String::with_capacity(length);
@@ -165,7 +263,7 @@ fn generate_random_code(length: usize) -> String {
     hex_string
 }
 
-async fn setup_oauth_mock(server: &MockServer, email: &str) {
+async fn setup_github_oauth_mock(server: &MockServer, email: &str) {
     // Mock Github OAuth
     let b_token = "gho_16C7e42F292c6912E7710c838347Ae178B4a";
     let token_body = serde_json::json!({
@@ -198,6 +296,41 @@ async fn setup_oauth_mock(server: &MockServer, email: &str) {
 
     Mock::given(method("GET"))
         .and(path("/user"))
+        .and(bearer_token(&b_token))
+        .respond_with(ResponseTemplate::new(200).set_body_json(user_response))
+        .expect(1)
+        .mount(server)
+        .await;
+}
+
+async fn setup_discord_oauth_mock(server: &MockServer, email: &str) {
+    // Mock Discord OAuth
+    let b_token = "6qrZcUqja7812RVdnEKjpzOL4CvHBFG";
+    let token_body = serde_json::json!({
+        "access_token": b_token,
+        "token_type": "bearer",
+        "scope": "identify"
+    });
+
+    Mock::given(method("POST"))
+        .and(path("/api/v10/oauth2/token"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(token_body))
+        .expect(1)
+        .mount(server)
+        .await;
+
+    // Mock Discord API
+    let user_response = serde_json::json!({
+      "id": "80351110224678912",
+      "username": "Nelly",
+      "discriminator": "1337",
+      "avatar": "8342729096ea3675442027381ff50dfe",
+      "verified": true,
+      "email": email,
+    });
+
+    Mock::given(method("GET"))
+        .and(path("/users/@me"))
         .and(bearer_token(&b_token))
         .respond_with(ResponseTemplate::new(200).set_body_json(user_response))
         .expect(1)

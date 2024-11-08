@@ -18,6 +18,8 @@ env:
   APP_API_KEY: ${{ secrets.APP_API_KEY }}
   APP_GITHUB_ID: ${{ vars.APP_GITHUB_ID }}
   APP_GITHUB_SECRET: ${{ secrets.APP_GITHUB_SECRET }}
+  APP_DISCORD_ID: ${{ vars.APP_DISCORD_ID }}
+  APP_DISCORD_SECRET: ${{ secrets.APP_DISCORD_SECRET }}
 
   DB_USERNAME: postgres
   DB_PASSWORD: password

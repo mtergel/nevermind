@@ -150,8 +150,10 @@ pub async fn spawn_app() -> TestApp {
         c.app_application_port = 0;
 
         c.app_github_api_base_uri = oauth_mock_server.uri();
-        c.app_github_auth_url = format!("{}/login/oauth/authorize", oauth_mock_server.uri());
         c.app_github_token_url = format!("{}/login/oauth/access_token", oauth_mock_server.uri());
+
+        c.app_discord_api_base_uri = oauth_mock_server.uri();
+        c.app_discord_token_url = format!("{}/api/v10/oauth2/token", oauth_mock_server.uri());
 
         c
     };
