@@ -1,10 +1,6 @@
 use anyhow::Context;
 use axum::{extract::State, http::HeaderMap, routing::post, Json, Router};
-use oauth2::{
-    basic::BasicClient, reqwest::async_http_client, AuthUrl, AuthorizationCode, ClientId,
-    ClientSecret, TokenResponse, TokenUrl,
-};
-use secrecy::{ExposeSecret, SecretString};
+use secrecy::SecretString;
 use serde::{Deserialize, Serialize};
 use sqlx::{PgPool, Postgres, Transaction};
 use time::OffsetDateTime;
@@ -15,6 +11,7 @@ use validator::Validate;
 use crate::{
     app::{
         auth::{
+            oauth::OAuthClient,
             password::{validate_credentials, Credentials},
             scope::get_scopes,
             session::{Session, SessionMetadata},
@@ -275,17 +272,6 @@ async fn assertion_flow(
 ) -> Result<GrantResponse, AppError> {
     match req.provider {
         AssertionProvider::Github => {
-            let git_id = ClientId::new(config.app_github_id.clone());
-            let git_secret =
-                ClientSecret::new(config.app_github_secret.expose_secret().to_string());
-            let auth_url = AuthUrl::new("https://github.com/login/oauth/authorize".to_string())
-                .context("github invalid authorization endpoint")
-                .unwrap();
-            let token_url =
-                TokenUrl::new("https://github.com/login/oauth/access_token".to_string())
-                    .context("github invalid token endpoint")
-                    .unwrap();
-
             // The user data we'll get back from Github.
             // https://docs.github.com/en/rest/users/users?apiVersion=2022-11-28#get-the-authenticated-user
             #[derive(Debug, Deserialize)]
@@ -296,19 +282,22 @@ async fn assertion_flow(
                 pub avatar_url: Option<String>,
             }
 
-            // TODO:
-            // This should be created on config and passed
-            let git_client = BasicClient::new(git_id, Some(git_secret), auth_url, Some(token_url));
+            let git_client = OAuthClient::new(
+                &config.app_github_id,
+                &config.app_github_secret,
+                &config.app_github_auth_url,
+                &config.app_github_token_url,
+            );
+
             let token = git_client
-                .exchange_code(AuthorizationCode::new(req.code))
-                .request_async(async_http_client)
+                .exchange_code_for_access_token(&req.code)
                 .await
                 .context("failed to exchange code for token")?;
 
             let http_client = reqwest::Client::new();
             let user_data: GithubUser = http_client
-                .get("https://api.github.com/user")
-                .bearer_auth(token.access_token().secret())
+                .get(format!("{}/user", config.app_github_api_base_uri))
+                .bearer_auth(&token)
                 .header("User-Agent", "mtergel".to_owned())
                 .send()
                 .await
@@ -331,8 +320,8 @@ async fn assertion_flow(
 
                 // fetch email
                 let user_email_list: Vec<GithubUserEmail> = http_client
-                    .get("https://api.github.com/user/emails")
-                    .bearer_auth(token.access_token().secret())
+                    .get(format!("{}/user/emails", config.app_github_api_base_uri))
+                    .bearer_auth(&token)
                     .header("User-Agent", "mtergel".to_owned())
                     .send()
                     .await
