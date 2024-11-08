@@ -229,10 +229,15 @@ pub async fn list_user_email(
     let rows = sqlx::query_as!(
         EmailFromQuery,
         r#"
-            select email_id, email, verified, 
-            is_primary, created_at, confirmation_sent_at
-            from email
-            where user_id = $1
+            select 
+                e.email_id, 
+                e.email, 
+                e.verified, 
+                e.is_primary, 
+                e.created_at, 
+                e.confirmation_sent_at
+            from email e
+            where e.user_id = $1
             limit $2
         "#,
         auth_user.user_id,

@@ -254,7 +254,7 @@ struct AssertionFlowInput {
 #[derive(Debug, Deserialize, Serialize, ToSchema, sqlx::Type)]
 #[sqlx(type_name = "social_provider", rename_all = "lowercase")]
 #[serde(rename_all = "lowercase")]
-enum AssertionProvider {
+pub enum AssertionProvider {
     Github,
     #[serde(skip)]
     Google,
@@ -366,6 +366,7 @@ async fn assertion_flow(
                     let email_id = upsert_email(&provider_email, &user_id, &mut tx).await?;
                     upsert_social_login(
                         &email_id,
+                        &user_id,
                         AssertionProvider::Github,
                         &user_data.id.to_string(),
                         &mut tx,
@@ -550,17 +551,19 @@ async fn upsert_email(
 
 async fn upsert_social_login(
     email_id: &Uuid,
+    user_id: &Uuid,
     provider: AssertionProvider,
     provider_user_id: &str,
     tx: &mut Transaction<'static, Postgres>,
 ) -> anyhow::Result<()> {
     sqlx::query!(
         r#"
-            insert into social_login (email_id, provider, provider_user_id)
-            values ($1, $2, $3)
+            insert into social_login (email_id, user_id, provider, provider_user_id)
+            values ($1, $2, $3, $4)
             on conflict (provider_user_id) do nothing
         "#,
         email_id,
+        user_id,
         provider as _,
         provider_user_id
     )
