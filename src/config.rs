@@ -28,9 +28,6 @@ pub struct AppConfig {
     #[clap(long, env)]
     pub app_api_key: SecretString,
 
-    #[clap(long, env, default_value = "https://github.com/login/oauth/authorize")]
-    pub app_github_auth_url: String,
-
     #[clap(
         long,
         env,
@@ -46,6 +43,18 @@ pub struct AppConfig {
 
     #[clap(long, env)]
     pub app_github_secret: SecretString,
+
+    #[clap(long, env, default_value = "https://discord.com/api/v10/oauth2/token")]
+    pub app_discord_token_url: String,
+
+    #[clap(long, env, default_value = "https://discord.com/api")]
+    pub app_discord_api_base_uri: String,
+
+    #[clap(long, env)]
+    pub app_discord_id: String,
+
+    #[clap(long, env)]
+    pub app_discord_secret: SecretString,
 
     #[clap(long, env, default_value = "127.0.0.0")]
     pub db_host: String,

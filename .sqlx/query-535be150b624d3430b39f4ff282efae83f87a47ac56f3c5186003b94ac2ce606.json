@@ -1,0 +1,25 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            insert into email (email, user_id, verified, is_primary)\n            values ($1, $2, $3, $4)\n\n            on conflict (email)\n            do update set \n            verified = true,\n            confirmation_sent_at = null\n\n            returning email_id\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "email_id",
+        "type_info": "Uuid"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Uuid",
+        "Bool",
+        "Bool"
+      ]
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "535be150b624d3430b39f4ff282efae83f87a47ac56f3c5186003b94ac2ce606"
+}

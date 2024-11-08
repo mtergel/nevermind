@@ -82,6 +82,7 @@ pub fn router() -> Router<ApiContext> {
         (status = 200, description = "Successful grant", body = GrantResponse),
         (status = 400, description = "Bad request"),
         (status = 401, description = "Refresh token expired"),
+        (status = 404, description = "Unimplemented or inactive provider"),
         (status = 422, description = "Invalid input", body = AppError),
         (status = 500, description = "Internal server error")
     )
@@ -144,6 +145,7 @@ async fn oauth_token(
                 &ctx.redis_client,
                 &ctx.token_manager,
                 &ctx.config,
+                &ctx.http_client,
             )
             .await?;
 
@@ -253,15 +255,14 @@ struct AssertionFlowInput {
 #[serde(rename_all = "lowercase")]
 pub enum AssertionProvider {
     Github,
+    Discord,
     #[serde(skip)]
     Google,
     #[serde(skip)]
     Facebook,
-    #[serde(skip)]
-    Discord,
 }
 
-#[tracing::instrument(name = "Assertion flow", skip_all)]
+#[tracing::instrument(name = "Assertion flow", skip_all, fields(req = ?req))]
 async fn assertion_flow(
     req: AssertionFlowInput,
     metadata: SessionMetadata,
@@ -269,6 +270,7 @@ async fn assertion_flow(
     client: &redis::Client,
     token_manager: &TokenManager,
     config: &AppConfig,
+    http_client: &reqwest::Client,
 ) -> Result<GrantResponse, AppError> {
     match req.provider {
         AssertionProvider::Github => {
@@ -285,20 +287,21 @@ async fn assertion_flow(
             let git_client = OAuthClient::new(
                 &config.app_github_id,
                 &config.app_github_secret,
-                &config.app_github_auth_url,
                 &config.app_github_token_url,
+                &format!("{}/auth/oauth", &config.app_frontend_url),
             );
 
             let token = git_client
-                .exchange_code_for_access_token(&req.code)
+                .exchange_code_for_access_token(&req.code, http_client)
                 .await
                 .context("failed to exchange code for token")?;
 
-            let http_client = reqwest::Client::new();
             let user_data: GithubUser = http_client
                 .get(format!("{}/user", config.app_github_api_base_uri))
                 .bearer_auth(&token)
-                .header("User-Agent", "mtergel".to_owned())
+                .header("Accept", "application/json")
+                .header("X-GitHub-Api-Version", "2022-11-28")
+                .header("User-Agent", "Let's Yahu".to_owned())
                 .send()
                 .await
                 .context("failed to get user details")?
@@ -309,12 +312,13 @@ async fn assertion_flow(
             tracing::debug!("User data: {:?}", &user_data);
 
             let mut user_data_email = user_data.email.clone();
+            let mut user_email_verified = true;
 
             if user_data_email.is_none() {
                 #[derive(Debug, Deserialize)]
                 struct GithubUserEmail {
                     pub email: String,
-                    // pub verified: bool,
+                    pub verified: bool,
                     pub primary: bool,
                 }
 
@@ -322,7 +326,9 @@ async fn assertion_flow(
                 let user_email_list: Vec<GithubUserEmail> = http_client
                     .get(format!("{}/user/emails", config.app_github_api_base_uri))
                     .bearer_auth(&token)
-                    .header("User-Agent", "mtergel".to_owned())
+                    .header("Accept", "application/json")
+                    .header("X-GitHub-Api-Version", "2022-11-28")
+                    .header("User-Agent", "Let's Yahu".to_owned())
                     .send()
                     .await
                     .context("failed to get email list")?
@@ -332,10 +338,14 @@ async fn assertion_flow(
 
                 if user_email_list.is_empty() {
                     tracing::warn!("User email list is empty {:?}", &user_data);
+                    user_email_verified = false;
                 } else {
                     // find primary email
                     match user_email_list.iter().find(|x| x.primary) {
-                        Some(email) => user_data_email = Some(email.email.clone()),
+                        Some(email) => {
+                            user_data_email = Some(email.email.clone());
+                            user_email_verified = email.verified;
+                        }
 
                         None => {
                             if let Some(email) = user_email_list.first() {
@@ -352,7 +362,9 @@ async fn assertion_flow(
 
                     // Upsert db
                     let user_id = get_or_create_user(&provider_email, &mut tx).await?;
-                    let email_id = upsert_email(&provider_email, &user_id, &mut tx).await?;
+                    let email_id =
+                        upsert_email(&provider_email, &user_id, user_email_verified, &mut tx)
+                            .await?;
                     upsert_social_login(
                         &email_id,
                         &user_id,
@@ -394,7 +406,105 @@ async fn assertion_flow(
                 None => return Err(AppError::unprocessable_entity([("email", "missing")])),
             }
         }
-        AssertionProvider::Discord => Err(AppError::NotFound),
+        AssertionProvider::Discord => {
+            // The user data we'll get back from Discord.
+            // https://discord.com/developers/docs/resources/user#user-object
+            #[derive(Debug, Deserialize)]
+            struct DiscordUser {
+                pub id: String,
+                pub email: Option<String>,
+                pub verified: Option<bool>,
+                pub avatar: Option<String>, // avatar_hash
+            }
+
+            let discord_client = OAuthClient::new(
+                &config.app_discord_id,
+                &config.app_discord_secret,
+                &config.app_discord_token_url,
+                &format!("{}/auth/oauth", &config.app_frontend_url),
+            );
+
+            let token = discord_client
+                .exchange_code_for_access_token(&req.code, http_client)
+                .await
+                .context("failed to exchange code for token")?;
+
+            let user_data: DiscordUser = http_client
+                .get(format!("{}/users/@me", config.app_discord_api_base_uri))
+                .header("Accept", "application/json")
+                .header("User-Agent", "Let's Yahu".to_owned())
+                .bearer_auth(&token)
+                .header("User-Agent", "mtergel".to_owned())
+                .send()
+                .await
+                .context("failed to get user details")?
+                .json::<DiscordUser>()
+                .await
+                .context("failed to deserialize as JSON")?;
+
+            tracing::debug!("User data: {:?}", &user_data);
+
+            match user_data.email {
+                Some(provider_email) => {
+                    let mut tx = pool.begin().await?;
+
+                    // Upsert db
+                    let user_id = get_or_create_user(&provider_email, &mut tx).await?;
+                    let email_id = upsert_email(
+                        &provider_email,
+                        &user_id,
+                        Some(true) == user_data.verified,
+                        &mut tx,
+                    )
+                    .await?;
+                    upsert_social_login(
+                        &email_id,
+                        &user_id,
+                        AssertionProvider::Discord,
+                        &user_data.id.to_string(),
+                        &mut tx,
+                    )
+                    .await?;
+
+                    // https://discord.com/developers/docs/reference#image-formatting
+                    let image = match user_data.avatar {
+                        Some(hash) => format!(
+                            "https://cdn.discordapp.com/avatars/{}/{}",
+                            user_data.id, hash
+                        ),
+                        None => generate_avatar(&user_id.to_string()),
+                    };
+
+                    update_missing_user_metadata(
+                        UpdateUserMetadata {
+                            user_id,
+                            bio: None,
+                            image,
+                        },
+                        &mut tx,
+                    )
+                    .await?;
+
+                    tx.commit().await?;
+
+                    tracing::Span::current().record("user_id", tracing::field::display(&user_id));
+
+                    let session = Session::new(user_id);
+                    let tokens = session.insert(metadata, client, token_manager).await?;
+                    let scopes = get_scopes(user_id, pool).await?;
+
+                    Ok(GrantResponse {
+                        access_token: tokens.access_token,
+                        refresh_token: tokens.refresh_token,
+                        expires_in: tokens.expires_in,
+                        token_type: TokenType::Bearer,
+                        scope: scopes.to_string(),
+                    })
+                }
+
+                None => return Err(AppError::unprocessable_entity([("email", "missing")])),
+            }
+        }
         AssertionProvider::Google => Err(AppError::NotFound),
         AssertionProvider::Facebook => Err(AppError::NotFound),
     }
@@ -502,6 +612,7 @@ async fn get_or_create_user(
 async fn upsert_email(
     email: &str,
     user_id: &Uuid,
+    verified: bool,
     tx: &mut Transaction<'static, Postgres>,
 ) -> anyhow::Result<Uuid> {
     let primary_email = sqlx::query_scalar!(
@@ -519,7 +630,7 @@ async fn upsert_email(
     let email_id = sqlx::query_scalar!(
         r#"
             insert into email (email, user_id, verified, is_primary)
-            values ($1, $2, true, $3)
+            values ($1, $2, $3, $4)
 
             on conflict (email)
             do update set 
@@ -530,6 +641,7 @@ async fn upsert_email(
         "#,
         email,
         user_id,
+        verified,
         primary_email.is_none()
     )
     .fetch_one(&mut **tx)
