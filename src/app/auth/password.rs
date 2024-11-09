@@ -26,11 +26,15 @@ pub async fn validate_credentials(
             .to_string(),
     );
 
-    if let Some((stored_user_id, stored_password_hash)) =
+    if let Some((stored_user_id, stored_password_hash, reset_password)) =
         get_stored_credentials(&credentials.email, pool).await?
     {
         user_id = Some(stored_user_id);
         expected_password_hash = stored_password_hash;
+
+        if reset_password {
+            return Err(AppError::Forbidden);
+        }
     }
 
     verify_password_hash(expected_password_hash, credentials.password_hash).await?;
@@ -42,10 +46,10 @@ pub async fn validate_credentials(
 async fn get_stored_credentials(
     email: &str,
     pool: &PgPool,
-) -> anyhow::Result<Option<(Uuid, SecretString)>> {
+) -> anyhow::Result<Option<(Uuid, SecretString, bool)>> {
     let row = sqlx::query!(
         r#"
-            select u.user_id, u.password_hash
+            select u.user_id, u.password_hash, u.reset_password
             from email e
             inner join "user" u using (user_id)
             where e.email = $1 and e.is_primary = true
@@ -56,7 +60,13 @@ async fn get_stored_credentials(
     .fetch_optional(pool)
     .await
     .context("failed to retrieve stored credentials")?
-    .map(|u| (u.user_id, SecretString::from(u.password_hash)));
+    .map(|u| {
+        (
+            u.user_id,
+            SecretString::from(u.password_hash),
+            Some(true) == u.reset_password,
+        )
+    });
 
     Ok(row)
 }
