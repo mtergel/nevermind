@@ -121,5 +121,5 @@ async fn login_fails_for_reset_password() {
     });
 
     let res = app.post_login(&login_body).await;
-    assert!(res.status().is_success());
+    assert_eq!(res.status(), StatusCode::FORBIDDEN);
 }
