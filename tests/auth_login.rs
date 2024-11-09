@@ -97,3 +97,29 @@ async fn login_invalid_grant() {
     let res = app.post_login(&login_body).await;
     assert_eq!(res.status(), StatusCode::BAD_REQUEST);
 }
+
+#[tokio::test]
+async fn login_fails_for_reset_password() {
+    let app = spawn_app().await;
+
+    let _ = sqlx::query!(
+        r#"
+            update "user"
+            set reset_password = true
+            where user_id = $1
+        "#,
+        app.test_user.user_id
+    )
+    .execute(&app.db_pool)
+    .await
+    .unwrap();
+
+    let login_body = serde_json::json!({
+        "grant_type": "password",
+        "email": &app.test_user.email,
+        "password": &app.test_user.password
+    });
+
+    let res = app.post_login(&login_body).await;
+    assert!(res.status().is_success());
+}

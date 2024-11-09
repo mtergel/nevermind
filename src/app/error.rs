@@ -17,6 +17,10 @@ pub enum AppError {
     #[serde(skip)]
     Unauthorized,
 
+    #[error("authorization required")]
+    #[serde(skip)]
+    Forbidden,
+
     #[error("requested data not found")]
     #[serde(skip)]
     NotFound,
@@ -132,6 +136,7 @@ impl AppError {
     fn status_code(&self) -> StatusCode {
         match self {
             Self::Unauthorized => StatusCode::UNAUTHORIZED,
+            Self::Forbidden => StatusCode::FORBIDDEN,
             Self::NotFound => StatusCode::NOT_FOUND,
             Self::AxumJsonRejection(_) => StatusCode::BAD_REQUEST,
             Self::UnprocessableEntity { .. } => StatusCode::UNPROCESSABLE_ENTITY,

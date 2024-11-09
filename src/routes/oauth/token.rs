@@ -82,6 +82,7 @@ pub fn router() -> Router<ApiContext> {
         (status = 200, description = "Successful grant", body = GrantResponse),
         (status = 400, description = "Bad request"),
         (status = 401, description = "Refresh token expired"),
+        (status = 403, description = "Reset password required"),
         (status = 404, description = "Unimplemented or inactive provider"),
         (status = 422, description = "Invalid input", body = AppError),
         (status = 500, description = "Internal server error")
