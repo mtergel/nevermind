@@ -1,8 +1,7 @@
-use anyhow::Context;
 use axum::{extract::State, http::HeaderMap, routing::post, Json, Router};
 use secrecy::SecretString;
 use serde::{Deserialize, Serialize};
-use sqlx::{PgPool, Postgres, Transaction};
+use sqlx::PgPool;
 use time::OffsetDateTime;
 use utoipa::ToSchema;
 use uuid::Uuid;
@@ -11,7 +10,6 @@ use validator::Validate;
 use crate::{
     app::{
         auth::{
-            oauth::OAuthClient,
             password::{validate_credentials, Credentials},
             scope::get_scopes,
             session::{Session, SessionMetadata},
@@ -19,7 +17,7 @@ use crate::{
         },
         error::AppError,
         extrator::ValidatedJson,
-        utils::avatar_generator::generate_avatar,
+        oauth::{discord::handle_discord_assertion, github::handle_github_assertion},
         ApiContext,
     },
     config::AppConfig,
@@ -273,242 +271,30 @@ async fn assertion_flow(
     config: &AppConfig,
     http_client: &reqwest::Client,
 ) -> Result<GrantResponse, AppError> {
-    match req.provider {
+    let user_id: Uuid = match req.provider {
         AssertionProvider::Github => {
-            // The user data we'll get back from Github.
-            // https://docs.github.com/en/rest/users/users?apiVersion=2022-11-28#get-the-authenticated-user
-            #[derive(Debug, Deserialize)]
-            struct GithubUser {
-                pub id: i64,
-                pub email: Option<String>,
-                pub bio: Option<String>,
-                pub avatar_url: Option<String>,
-            }
-
-            let git_client = OAuthClient::new(
-                &config.app_github_id,
-                &config.app_github_secret,
-                &config.app_github_token_url,
-                &format!("{}/auth/oauth", &config.app_frontend_url),
-            );
-
-            let token = git_client
-                .exchange_code_for_access_token(&req.code, http_client)
-                .await
-                .context("failed to exchange code for token")?;
-
-            let user_data: GithubUser = http_client
-                .get(format!("{}/user", config.app_github_api_base_uri))
-                .bearer_auth(&token)
-                .header("Accept", "application/json")
-                .header("X-GitHub-Api-Version", "2022-11-28")
-                .header("User-Agent", "Let's Yahu".to_owned())
-                .send()
-                .await
-                .context("failed to get user details")?
-                .json::<GithubUser>()
-                .await
-                .context("failed to deserialize as JSON")?;
-
-            tracing::debug!("User data: {:?}", &user_data);
-
-            let mut user_data_email = user_data.email.clone();
-            let mut user_email_verified = true;
-
-            if user_data_email.is_none() {
-                #[derive(Debug, Deserialize)]
-                struct GithubUserEmail {
-                    pub email: String,
-                    pub verified: bool,
-                    pub primary: bool,
-                }
-
-                // fetch email
-                let user_email_list: Vec<GithubUserEmail> = http_client
-                    .get(format!("{}/user/emails", config.app_github_api_base_uri))
-                    .bearer_auth(&token)
-                    .header("Accept", "application/json")
-                    .header("X-GitHub-Api-Version", "2022-11-28")
-                    .header("User-Agent", "Let's Yahu".to_owned())
-                    .send()
-                    .await
-                    .context("failed to get email list")?
-                    .json::<Vec<GithubUserEmail>>()
-                    .await
-                    .context("failed to deserialize as JSON")?;
-
-                if user_email_list.is_empty() {
-                    tracing::warn!("User email list is empty {:?}", &user_data);
-                    user_email_verified = false;
-                } else {
-                    // find primary email
-                    match user_email_list.iter().find(|x| x.primary) {
-                        Some(email) => {
-                            user_data_email = Some(email.email.clone());
-                            user_email_verified = email.verified;
-                        }
-
-                        None => {
-                            if let Some(email) = user_email_list.first() {
-                                user_data_email = Some(email.email.clone())
-                            }
-                        }
-                    }
-                }
-            }
-
-            match user_data_email {
-                Some(provider_email) => {
-                    let mut tx = pool.begin().await?;
-
-                    // Upsert db
-                    let user_id = get_or_create_user(&provider_email, &mut tx).await?;
-                    let email_id =
-                        upsert_email(&provider_email, &user_id, user_email_verified, &mut tx)
-                            .await?;
-                    upsert_social_login(
-                        &email_id,
-                        &user_id,
-                        AssertionProvider::Github,
-                        &user_data.id.to_string(),
-                        &mut tx,
-                    )
-                    .await?;
-
-                    update_missing_user_metadata(
-                        UpdateUserMetadata {
-                            user_id,
-                            bio: user_data.bio,
-                            image: user_data
-                                .avatar_url
-                                .unwrap_or(generate_avatar(&user_id.to_string())),
-                        },
-                        &mut tx,
-                    )
-                    .await?;
-
-                    tx.commit().await?;
-
-                    tracing::Span::current().record("user_id", tracing::field::display(&user_id));
-
-                    let session = Session::new(user_id);
-                    let tokens = session.insert(metadata, client, token_manager).await?;
-                    let scopes = get_scopes(user_id, pool).await?;
-
-                    Ok(GrantResponse {
-                        access_token: tokens.access_token,
-                        refresh_token: tokens.refresh_token,
-                        expires_in: tokens.expires_in,
-                        token_type: TokenType::Bearer,
-                        scope: scopes.to_string(),
-                    })
-                }
-
-                None => return Err(AppError::unprocessable_entity([("email", "missing")])),
-            }
+            handle_github_assertion(pool, config, http_client, &req.code).await?
         }
         AssertionProvider::Discord => {
-            // The user data we'll get back from Discord.
-            // https://discord.com/developers/docs/resources/user#user-object
-            #[derive(Debug, Deserialize)]
-            struct DiscordUser {
-                pub id: String,
-                pub email: Option<String>,
-                pub verified: Option<bool>,
-                pub avatar: Option<String>, // avatar_hash
-            }
-
-            let discord_client = OAuthClient::new(
-                &config.app_discord_id,
-                &config.app_discord_secret,
-                &config.app_discord_token_url,
-                &format!("{}/auth/oauth", &config.app_frontend_url),
-            );
-
-            let token = discord_client
-                .exchange_code_for_access_token(&req.code, http_client)
-                .await
-                .context("failed to exchange code for token")?;
-
-            let user_data: DiscordUser = http_client
-                .get(format!("{}/users/@me", config.app_discord_api_base_uri))
-                .header("Accept", "application/json")
-                .header("User-Agent", "Let's Yahu".to_owned())
-                .bearer_auth(&token)
-                .header("User-Agent", "mtergel".to_owned())
-                .send()
-                .await
-                .context("failed to get user details")?
-                .json::<DiscordUser>()
-                .await
-                .context("failed to deserialize as JSON")?;
-
-            tracing::debug!("User data: {:?}", &user_data);
-
-            match user_data.email {
-                Some(provider_email) => {
-                    let mut tx = pool.begin().await?;
-
-                    // Upsert db
-                    let user_id = get_or_create_user(&provider_email, &mut tx).await?;
-                    let email_id = upsert_email(
-                        &provider_email,
-                        &user_id,
-                        Some(true) == user_data.verified,
-                        &mut tx,
-                    )
-                    .await?;
-                    upsert_social_login(
-                        &email_id,
-                        &user_id,
-                        AssertionProvider::Discord,
-                        &user_data.id.to_string(),
-                        &mut tx,
-                    )
-                    .await?;
-
-                    // https://discord.com/developers/docs/reference#image-formatting
-                    let image = match user_data.avatar {
-                        Some(hash) => format!(
-                            "https://cdn.discordapp.com/avatars/{}/{}",
-                            user_data.id, hash
-                        ),
-                        None => generate_avatar(&user_id.to_string()),
-                    };
-
-                    update_missing_user_metadata(
-                        UpdateUserMetadata {
-                            user_id,
-                            bio: None,
-                            image,
-                        },
-                        &mut tx,
-                    )
-                    .await?;
-
-                    tx.commit().await?;
-
-                    tracing::Span::current().record("user_id", tracing::field::display(&user_id));
-
-                    let session = Session::new(user_id);
-                    let tokens = session.insert(metadata, client, token_manager).await?;
-                    let scopes = get_scopes(user_id, pool).await?;
-
-                    Ok(GrantResponse {
-                        access_token: tokens.access_token,
-                        refresh_token: tokens.refresh_token,
-                        expires_in: tokens.expires_in,
-                        token_type: TokenType::Bearer,
-                        scope: scopes.to_string(),
-                    })
-                }
-
-                None => return Err(AppError::unprocessable_entity([("email", "missing")])),
-            }
+            handle_discord_assertion(pool, config, http_client, &req.code).await?
         }
-        AssertionProvider::Google => Err(AppError::NotFound),
-        AssertionProvider::Facebook => Err(AppError::NotFound),
-    }
+        AssertionProvider::Google => return Err(AppError::NotFound),
+        AssertionProvider::Facebook => return Err(AppError::NotFound),
+    };
+
+    tracing::Span::current().record("user_id", tracing::field::display(&user_id));
+
+    let session = Session::new(user_id);
+    let tokens = session.insert(metadata, client, token_manager).await?;
+    let scopes = get_scopes(user_id, pool).await?;
+
+    Ok(GrantResponse {
+        access_token: tokens.access_token,
+        refresh_token: tokens.refresh_token,
+        expires_in: tokens.expires_in,
+        token_type: TokenType::Bearer,
+        scope: scopes.to_string(),
+    })
 }
 
 impl std::fmt::Display for GrantType {
@@ -568,138 +354,4 @@ impl TryFrom<GrantTokenInput> for AssertionFlowInput {
 
         Ok(input)
     }
-}
-
-/// Gets previous or newly created user's UUID
-async fn get_or_create_user(
-    email: &str,
-    tx: &mut Transaction<'static, Postgres>,
-) -> anyhow::Result<Uuid> {
-    let user_id = sqlx::query_scalar!(
-        r#"
-            select user_id
-            from email
-            where email = $1
-        "#,
-        email
-    )
-    .fetch_optional(&mut **tx)
-    .await?;
-
-    match user_id {
-        Some(user_id) => Ok(user_id),
-
-        None => {
-            let new_username = Uuid::new_v4();
-            let new_password = Uuid::new_v4();
-
-            let user_id = sqlx::query_scalar!(
-                r#"
-                    insert into "user" (username, password_hash, reset_password)
-                    values ($1, $2, true)
-                    returning user_id
-                "#,
-                new_username.to_string(),
-                new_password.to_string()
-            )
-            .fetch_one(&mut **tx)
-            .await?;
-
-            Ok(user_id)
-        }
-    }
-}
-
-async fn upsert_email(
-    email: &str,
-    user_id: &Uuid,
-    verified: bool,
-    tx: &mut Transaction<'static, Postgres>,
-) -> anyhow::Result<Uuid> {
-    let primary_email = sqlx::query_scalar!(
-        r#"
-            select email_id
-            from email
-            where user_id = $1 and is_primary = true
-            limit 1
-        "#,
-        user_id
-    )
-    .fetch_optional(&mut **tx)
-    .await?;
-
-    let email_id = sqlx::query_scalar!(
-        r#"
-            insert into email (email, user_id, verified, is_primary)
-            values ($1, $2, $3, $4)
-
-            on conflict (email)
-            do update set 
-            verified = true,
-            confirmation_sent_at = null
-
-            returning email_id
-        "#,
-        email,
-        user_id,
-        verified,
-        primary_email.is_none()
-    )
-    .fetch_one(&mut **tx)
-    .await?;
-
-    Ok(email_id)
-}
-
-async fn upsert_social_login(
-    email_id: &Uuid,
-    user_id: &Uuid,
-    provider: AssertionProvider,
-    provider_user_id: &str,
-    tx: &mut Transaction<'static, Postgres>,
-) -> anyhow::Result<()> {
-    sqlx::query!(
-        r#"
-            insert into social_login (email_id, user_id, provider, provider_user_id)
-            values ($1, $2, $3, $4)
-            on conflict (provider_user_id) do nothing
-        "#,
-        email_id,
-        user_id,
-        provider as _,
-        provider_user_id
-    )
-    .execute(&mut **tx)
-    .await?;
-
-    Ok(())
-}
-
-#[derive(serde::Deserialize, Default, PartialEq, Eq)]
-#[serde(default)]
-struct UpdateUserMetadata {
-    user_id: Uuid,
-    bio: Option<String>,
-    image: String,
-}
-
-async fn update_missing_user_metadata(
-    input: UpdateUserMetadata,
-    tx: &mut Transaction<'static, Postgres>,
-) -> anyhow::Result<()> {
-    sqlx::query!(
-        r#"
-            update "user"
-                set bio = coalesce("user".bio, $1),
-                image = coalesce("user".image, $2) 
-            where user_id = $3
-        "#,
-        input.bio,
-        input.image,
-        input.user_id
-    )
-    .execute(&mut **tx)
-    .await?;
-
-    Ok(())
 }

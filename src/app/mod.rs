@@ -16,13 +16,14 @@ pub mod auth;
 pub mod email;
 pub mod error;
 pub mod extrator;
+pub mod oauth;
 pub mod otp;
 pub mod storage;
 pub mod utils;
 
 use crate::{
     config::{AppConfig, Stage},
-    routes::{auth as auth_route, docs, health_check, oauth, upload},
+    routes::{auth as auth_route, docs, health_check, oauth as oauth_route, upload},
 };
 
 pub struct Application {
@@ -114,7 +115,7 @@ fn build_routes(api_context: ApiContext) -> Router {
     Router::new()
         .merge(health_check::router())
         .merge(docs::router())
-        .merge(oauth::router())
+        .merge(oauth_route::router())
         .merge(auth_route::router())
         .merge(upload::router())
         .with_state(api_context)

@@ -1,0 +1,28 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            select u.reset_password, u.reset_username\n            from email e\n            inner join \"user\" u using (user_id)\n            where email = $1\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "reset_password",
+        "type_info": "Bool"
+      },
+      {
+        "ordinal": 1,
+        "name": "reset_username",
+        "type_info": "Bool"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text"
+      ]
+    },
+    "nullable": [
+      true,
+      true
+    ]
+  },
+  "hash": "89b049057fdff88727c1b8e571c0737fa2b3ef2d58ba55b0e72514823dabd1f8"
+}
