@@ -57,11 +57,12 @@ async fn github_oauth_for_new_user_works() {
 
     let db_user = sqlx::query!(
         r#"
-            select reset_password, reset_username
-            from "user"
-            where username = $1
+            select u.reset_password, u.reset_username
+            from email e
+            inner join "user" u using (user_id)
+            where email = $1
         "#,
-        new_user.username
+        new_user.email
     )
     .fetch_one(&app.db_pool)
     .await
