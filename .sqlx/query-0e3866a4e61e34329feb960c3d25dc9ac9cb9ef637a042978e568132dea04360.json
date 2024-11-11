@@ -1,0 +1,23 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n                    insert into \"user\" (username, password_hash, reset_password, reset_username)\n                    values ($1, $2, true, true)\n                    returning user_id\n                ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "user_id",
+        "type_info": "Uuid"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Text"
+      ]
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "0e3866a4e61e34329feb960c3d25dc9ac9cb9ef637a042978e568132dea04360"
+}

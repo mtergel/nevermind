@@ -54,6 +54,21 @@ async fn github_oauth_for_new_user_works() {
 
     assert_eq!(new_user.email, db_email.email);
     assert_eq!(db_email.provider, AssertionProvider::Github);
+
+    let db_user = sqlx::query!(
+        r#"
+            select reset_password, reset_username
+            from "user"
+            where username = $1
+        "#,
+        new_user.username
+    )
+    .fetch_one(&app.db_pool)
+    .await
+    .unwrap();
+
+    assert_eq!(db_user.reset_password, Some(true));
+    assert_eq!(db_user.reset_username, Some(true));
 }
 
 #[tokio::test]
