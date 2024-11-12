@@ -1,0 +1,28 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            select reset_username, reset_password\n            from \"user\"\n            where user_id = $1\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "reset_username",
+        "type_info": "Bool"
+      },
+      {
+        "ordinal": 1,
+        "name": "reset_password",
+        "type_info": "Bool"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      true,
+      true
+    ]
+  },
+  "hash": "4b7852fdddbae392a070a1320bf6e14e6ef6d2a2c7d167976fdc7881573c8577"
+}

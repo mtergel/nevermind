@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "\n            select u.user_id, u.username, e.email, e.verified,\n            u.bio, u.image\n            from email e\n            inner join \"user\" u using (user_id)\n            where e.user_id = $1 and e.is_primary = true\n        ",
+  "query": "\n            select u.user_id, u.username, e.email, e.verified,\n            u.bio, u.image, u.reset_username, u.reset_password\n            from email e\n            inner join \"user\" u using (user_id)\n            where e.user_id = $1 and e.is_primary = true\n        ",
   "describe": {
     "columns": [
       {
@@ -32,6 +32,16 @@
         "ordinal": 5,
         "name": "image",
         "type_info": "Text"
+      },
+      {
+        "ordinal": 6,
+        "name": "reset_username",
+        "type_info": "Bool"
+      },
+      {
+        "ordinal": 7,
+        "name": "reset_password",
+        "type_info": "Bool"
       }
     ],
     "parameters": {
@@ -45,8 +55,10 @@
       false,
       false,
       false,
+      true,
+      true,
       true
     ]
   },
-  "hash": "4aae6b1770aa382053f3d2bf57429e762179b2d5c1dcd88fd35eb35b768a921d"
+  "hash": "ef7c6ca0beab37a00ed68cd98dd06f168ce7a4433c6fd56970015d17f2d7f77a"
 }
