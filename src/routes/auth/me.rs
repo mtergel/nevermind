@@ -7,7 +7,7 @@ use validator::Validate;
 use crate::{
     app::{
         auth::password::compute_password_hash,
-        error::AppError,
+        error::{AppError, ResultExt},
         extrator::{AuthUser, ValidatedJson},
         utils::validation::USERNAME_REGEX,
         ApiContext,
@@ -121,7 +121,10 @@ pub async fn complete_me_profile(
             auth_user.user_id
         )
         .execute(&mut *tx)
-        .await?;
+        .await
+        .on_constraint("user_username_key", |_| {
+            AppError::unprocessable_entity([("username", "taken")])
+        })?;
     }
 
     if req.password.is_some() && Some(true) == user_metadata.reset_password {
