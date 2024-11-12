@@ -89,6 +89,7 @@ pub async fn get_me_profile(
         (status = 204, description = "Successful completed profile"),
         (status = 401, description = "Unauthorized"),
         (status = 404, description = "User not found"),
+        (status = 422, description = "Invalid input", body = AppError),
         (status = 500, description = "Internal server error")
     )
 )]
