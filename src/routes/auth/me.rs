@@ -1,9 +1,17 @@
-use axum::{extract::State, Json};
-use serde::Serialize;
+use axum::{extract::State, http::StatusCode, Json};
+use secrecy::SecretString;
+use serde::{Deserialize, Serialize};
 use utoipa::ToSchema;
+use validator::Validate;
 
 use crate::{
-    app::{error::AppError, extrator::AuthUser, ApiContext},
+    app::{
+        auth::password::compute_password_hash,
+        error::AppError,
+        extrator::{AuthUser, ValidatedJson},
+        utils::validation::USERNAME_REGEX,
+        ApiContext,
+    },
     routes::docs::AUTH_TAG,
 };
 
@@ -14,6 +22,16 @@ pub struct MeResponse {
     email_verified: bool,
     bio: String,
     image: Option<String>,
+    reset_password: Option<bool>,
+    reset_username: Option<bool>,
+}
+
+#[derive(Debug, Deserialize, Validate, ToSchema)]
+pub struct CompleteMeInput {
+    #[validate(regex(path = *USERNAME_REGEX))]
+    username: Option<String>,
+    #[schema(value_type = Option<String>)]
+    password: Option<SecretString>,
 }
 
 #[utoipa::path(
@@ -38,7 +56,7 @@ pub async fn get_me_profile(
     let res = sqlx::query!(
         r#"
             select u.user_id, u.username, e.email, e.verified,
-            u.bio, u.image
+            u.bio, u.image, u.reset_username, u.reset_password
             from email e
             inner join "user" u using (user_id)
             where e.user_id = $1 and e.is_primary = true
@@ -54,5 +72,74 @@ pub async fn get_me_profile(
         email_verified: res.verified,
         bio: res.bio,
         image: res.image,
+        reset_password: res.reset_password,
+        reset_username: res.reset_username,
     }))
+}
+
+#[utoipa::path(
+    post,
+    path = "/me/complete",
+    tag = AUTH_TAG,
+    request_body = CompleteMeInput,
+    security(
+        ("bearerAuth" = [])
+    ),
+    responses(
+        (status = 204, description = "Successful completed profile"),
+        (status = 401, description = "Unauthorized"),
+        (status = 404, description = "User not found"),
+        (status = 500, description = "Internal server error")
+    )
+)]
+#[tracing::instrument(name = "Complete me profile", skip_all)]
+pub async fn complete_me_profile(
+    auth_user: AuthUser,
+    ctx: State<ApiContext>,
+    ValidatedJson(req): ValidatedJson<CompleteMeInput>,
+) -> Result<StatusCode, AppError> {
+    let mut tx = ctx.db_pool.begin().await?;
+    let user_metadata = sqlx::query!(
+        r#"
+            select reset_username, reset_password
+            from "user"
+            where user_id = $1
+        "#,
+        auth_user.user_id
+    )
+    .fetch_one(&mut *tx)
+    .await?;
+
+    if req.username.is_some() && Some(true) == user_metadata.reset_username {
+        let _ = sqlx::query!(
+            r#"
+                update "user"
+                set username = $1, reset_username = null
+                where user_id = $2
+            "#,
+            req.username,
+            auth_user.user_id
+        )
+        .execute(&mut *tx)
+        .await?;
+    }
+
+    if req.password.is_some() && Some(true) == user_metadata.reset_password {
+        let password_hash = compute_password_hash(req.password.unwrap()).await?;
+        let _ = sqlx::query!(
+            r#"
+                update "user"
+                set password_hash = $1, reset_password = null
+                where user_id = $2
+            "#,
+            password_hash,
+            auth_user.user_id
+        )
+        .execute(&mut *tx)
+        .await?;
+    }
+
+    tx.commit().await?;
+
+    Ok(StatusCode::NO_CONTENT)
 }

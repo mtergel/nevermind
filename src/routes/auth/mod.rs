@@ -3,7 +3,7 @@ use axum::{
     Router,
 };
 use email::{add_email, delete_user_email, list_user_email, update_email_to_primary};
-use me::get_me_profile;
+use me::{complete_me_profile, get_me_profile};
 use password::{forgot_password, reset_password};
 use register::register_user;
 use session::{list_active_sessions, revoke_session, revoke_session_by_id};
@@ -22,6 +22,7 @@ pub mod verify;
 pub fn router() -> Router<ApiContext> {
     Router::new()
         .route("/auth/me", get(get_me_profile))
+        .route("/auth/me/complete", post(complete_me_profile))
         .route("/auth/users", post(register_user))
         .route("/auth/emails", post(add_email).get(list_user_email))
         .route("/auth/emails/:id", delete(delete_user_email))
@@ -47,6 +48,7 @@ pub fn router() -> Router<ApiContext> {
     password::forgot_password,
     password::reset_password,
     me::get_me_profile,
+    me::complete_me_profile,
     session::list_active_sessions,
     session::revoke_session,
     session::revoke_session_by_id

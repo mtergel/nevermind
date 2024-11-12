@@ -1,0 +1,14 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            update \"user\"\n            set reset_username = true\n            where user_id = $1\n\n        ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "a1d919da0c2a51b4065bfc927b7f1696edca8d2fbe80a98818bc047b9a4b132d"
+}
