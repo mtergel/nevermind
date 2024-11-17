@@ -49,6 +49,7 @@ async fn reset_password_works() {
 #[tokio::test]
 async fn change_password_works() {
     let app = spawn_app().await;
+    let token = app.login_and_get_token().await;
 
     let new_user = TestUser::generate();
     let body = serde_json::json!({
@@ -59,6 +60,7 @@ async fn change_password_works() {
     let res = app
         .api_client
         .post(&format!("{}/auth/change-password", &app.address))
+        .header("Authorization", "Bearer ".to_owned() + &token)
         .json(&body)
         .send()
         .await
