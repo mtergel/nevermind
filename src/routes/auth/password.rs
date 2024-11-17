@@ -11,8 +11,9 @@ use crate::{
         auth::password::compute_password_hash,
         email::client::EmailClient,
         error::AppError,
-        extrator::ValidatedJson,
+        extrator::{AuthUser, ValidatedJson},
         otp::{email_forgot_otp::EmailForgotOtp, OtpManager},
+        utils::validation::validate_password,
         ApiContext,
     },
     config::Stage,
@@ -28,6 +29,14 @@ pub struct ForgotPasswordInput {
 #[derive(Debug, Deserialize, Validate, ToSchema)]
 pub struct ResetPasswordInput {
     token: String,
+    #[schema(value_type = String)]
+    new_password: SecretString,
+}
+
+#[derive(Debug, Deserialize, Validate, ToSchema)]
+pub struct ChangePasswordInput {
+    #[schema(value_type = String)]
+    password: SecretString,
     #[schema(value_type = String)]
     new_password: SecretString,
 }
@@ -157,6 +166,43 @@ async fn reset_user_password(hash: &str, email: &str, pool: &PgPool) -> Result<U
     tx.commit().await?;
 
     Ok(user_id)
+}
+
+#[utoipa::path(
+    post,
+    path = "/change-password",
+    tag = AUTH_TAG,
+    request_body = ChangePasswordInput,
+    responses(
+        (status = 204, description = "Successfully updated the password"),
+        (status = 400, description = "Bad request"),
+        (status = 401, description = "Wrong password"),
+        (status = 422, description = "Invalid input", body = AppError),
+        (status = 500, description = "Internal server error")
+    )
+)]
+#[tracing::instrument(name = "Change password", skip_all, fields(req = ?req))]
+pub async fn change_password(
+    auth_user: AuthUser,
+    ctx: State<ApiContext>,
+    ValidatedJson(req): ValidatedJson<ChangePasswordInput>,
+) -> Result<StatusCode, AppError> {
+    validate_password(req.password, &auth_user.user_id, &ctx.db_pool).await?;
+    let password_hash = compute_password_hash(req.new_password).await?;
+
+    let _ = sqlx::query!(
+        r#"
+            update "user"
+            set password_hash = $1
+            where user_id = $2
+        "#,
+        password_hash,
+        auth_user.user_id
+    )
+    .execute(&*ctx.db_pool)
+    .await?;
+
+    Ok(StatusCode::NO_CONTENT)
 }
 
 #[tracing::instrument(name = "Sending password changed notification", skip_all)]
