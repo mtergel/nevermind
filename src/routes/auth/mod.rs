@@ -4,7 +4,7 @@ use axum::{
 };
 use email::{add_email, delete_user_email, list_user_email, update_email_to_primary};
 use me::{complete_me_profile, get_me_profile};
-use password::{forgot_password, reset_password};
+use password::{change_password, forgot_password, reset_password};
 use register::register_user;
 use session::{list_active_sessions, revoke_session, revoke_session_by_id};
 use utoipa::OpenApi;
@@ -31,6 +31,7 @@ pub fn router() -> Router<ApiContext> {
         .route("/auth/emails/:id/primary", patch(update_email_to_primary))
         .route("/auth/forgot-password", post(forgot_password))
         .route("/auth/reset-password", post(reset_password))
+        .route("/auth/change-password", post(change_password))
         .route("/auth/sessions", get(list_active_sessions))
         .route("/auth/sessions/revoke", delete(revoke_session))
         .route("/auth/sessions/:id/revoke", delete(revoke_session_by_id))
@@ -47,6 +48,7 @@ pub fn router() -> Router<ApiContext> {
     email::update_email_to_primary,
     password::forgot_password,
     password::reset_password,
+    password::change_password,
     me::get_me_profile,
     me::complete_me_profile,
     session::list_active_sessions,

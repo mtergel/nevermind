@@ -5,7 +5,7 @@ use redis::AsyncCommands;
 use reqwest::StatusCode;
 
 pub mod common;
-use common::helpers::{spawn_app, TestApp};
+use common::helpers::{spawn_app, TestApp, TestUser};
 
 #[tokio::test]
 async fn forgot_password_works() {
@@ -40,6 +40,36 @@ async fn reset_password_works() {
         "grant_type": "password",
         "email": &app.test_user.email,
         "password": new_password
+    });
+
+    let res = app.post_login(&login_body).await;
+    assert!(res.status().is_success());
+}
+
+#[tokio::test]
+async fn change_password_works() {
+    let app = spawn_app().await;
+
+    let new_user = TestUser::generate();
+    let body = serde_json::json!({
+        "password": app.test_user.password,
+        "new_password": new_user.password
+    });
+
+    let res = app
+        .api_client
+        .post(&format!("{}/auth/change-password", &app.address))
+        .json(&body)
+        .send()
+        .await
+        .expect("failed to execute request");
+
+    assert_eq!(res.status(), StatusCode::NO_CONTENT);
+
+    let login_body = serde_json::json!({
+        "grant_type": "password",
+        "email": &app.test_user.email,
+        "password": new_user.password
     });
 
     let res = app.post_login(&login_body).await;
