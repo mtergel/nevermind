@@ -172,6 +172,9 @@ async fn reset_user_password(hash: &str, email: &str, pool: &PgPool) -> Result<U
     post,
     path = "/change-password",
     tag = AUTH_TAG,
+    security(
+        ("bearerAuth" = [])
+    ),
     request_body = ChangePasswordInput,
     responses(
         (status = 204, description = "Successfully updated the password"),
