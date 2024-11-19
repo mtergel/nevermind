@@ -34,6 +34,13 @@ pub struct CompleteMeInput {
     password: Option<SecretString>,
 }
 
+#[derive(Debug, Default, PartialEq, Eq, Deserialize, Validate, ToSchema)]
+#[serde(default)] // fill in any missing fields with `..UpdateUser::default()`
+pub struct UpdateUserInput {
+    bio: Option<String>,
+    image: Option<String>,
+}
+
 #[utoipa::path(
     get,
     path = "/me",
@@ -144,6 +151,49 @@ pub async fn complete_me_profile(
     }
 
     tx.commit().await?;
+
+    Ok(StatusCode::NO_CONTENT)
+}
+
+#[utoipa::path(
+    patch,
+    path = "/me",
+    tag = AUTH_TAG,
+    request_body = UpdateUserInput,
+    security(
+        ("bearerAuth" = [])
+    ),
+    responses(
+        (status = 204, description = "Successful updated profile"),
+        (status = 401, description = "Unauthorized"),
+        (status = 404, description = "User not found"),
+        (status = 422, description = "Invalid input", body = AppError),
+        (status = 500, description = "Internal server error")
+    )
+)]
+#[tracing::instrument(name = "Update me profile", skip_all)]
+pub async fn update_me_profile(
+    auth_user: AuthUser,
+    ctx: State<ApiContext>,
+    ValidatedJson(req): ValidatedJson<UpdateUserInput>,
+) -> Result<StatusCode, AppError> {
+    if req == UpdateUserInput::default() {
+        return Ok(StatusCode::NO_CONTENT);
+    }
+
+    let _ = sqlx::query!(
+        r#"
+            update "user"
+            set bio = coalesce($1, "user".bio),
+                image = coalesce($2, "user".image)
+            where user_id = $3
+        "#,
+        req.bio,
+        req.image,
+        auth_user.user_id
+    )
+    .execute(&*ctx.db_pool)
+    .await?;
 
     Ok(StatusCode::NO_CONTENT)
 }

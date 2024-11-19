@@ -1,4 +1,5 @@
-use serde::Deserialize;
+use fake::{faker::company::en::CatchPhrase, Fake};
+use serde::{Deserialize, Serialize};
 
 pub mod common;
 use common::helpers::{spawn_app, TestUser};
@@ -145,4 +146,53 @@ async fn complete_user_profile_does_not_update_if_not_set() {
     let data = res.json::<MeResponse>().await.unwrap();
 
     assert_eq!(data.username, app.test_user.username);
+}
+
+#[tokio::test]
+async fn update_user_profile_works() {
+    let app = spawn_app().await;
+    let token = app.login_and_get_token().await;
+
+    #[derive(Serialize)]
+    struct NewInput {
+        pub bio: String,
+        pub image: String,
+    }
+
+    let new_input = NewInput {
+        bio: CatchPhrase().fake(),
+        image: CatchPhrase().fake(),
+    };
+
+    let update_res = app
+        .api_client
+        .patch(&format!("{}/auth/me", &app.address))
+        .header("Authorization", "Bearer ".to_owned() + &token)
+        .json(&new_input)
+        .send()
+        .await
+        .expect("failed to execute request");
+
+    assert!(update_res.status().is_success());
+
+    let res = app
+        .api_client
+        .get(&format!("{}/auth/me", &app.address))
+        .header("Authorization", "Bearer ".to_owned() + &token)
+        .send()
+        .await
+        .expect("failed to execute request");
+
+    assert!(res.status().is_success());
+
+    #[derive(Deserialize)]
+    struct MeResponse {
+        pub bio: String,
+        pub image: String,
+    }
+
+    let data = res.json::<MeResponse>().await.unwrap();
+
+    assert_eq!(data.bio, new_input.bio);
+    assert_eq!(data.image, new_input.image);
 }
