@@ -39,7 +39,7 @@ pub fn router() -> Router<ApiContext> {
 
 #[utoipa::path(
     post,
-    path = "/",
+    path = "",
     tag = UPLOAD_TAG,
     security(
         ("bearerAuth" = [])
