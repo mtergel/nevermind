@@ -1,6 +1,7 @@
 use axum::{extract::State, http::StatusCode, Json};
 use secrecy::SecretString;
 use serde::{Deserialize, Serialize};
+use url::Url;
 use utoipa::ToSchema;
 use validator::Validate;
 
@@ -181,6 +182,19 @@ pub async fn update_me_profile(
         return Ok(StatusCode::NO_CONTENT);
     }
 
+    // save current image
+    let current_img = sqlx::query_scalar!(
+        r#"
+            select image
+            from "user"
+            where user_id = $1
+        "#,
+        auth_user.user_id
+    )
+    .fetch_one(&*ctx.db_pool)
+    .await?;
+
+    // update user info
     let _ = sqlx::query!(
         r#"
             update "user"
@@ -194,6 +208,28 @@ pub async fn update_me_profile(
     )
     .execute(&*ctx.db_pool)
     .await?;
+
+    // check if images changed
+    if let Some(changed_img) = req.image {
+        // check old image
+        if let Some(old_image) = current_img {
+            if Url::parse(&old_image).is_ok() {
+                // do nothing
+                // image set from third party
+            } else if changed_img != old_image {
+                // start different job
+                tokio::spawn(async move {
+                    // delete image
+                    match ctx.storage_client.delete_path(old_image).await {
+                        Ok(()) => {}
+                        Err(e) => {
+                            tracing::error!("internal server error: {:?}", e)
+                        }
+                    };
+                });
+            }
+        }
+    }
 
     Ok(StatusCode::NO_CONTENT)
 }

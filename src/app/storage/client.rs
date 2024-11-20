@@ -51,4 +51,18 @@ impl S3Storage {
     pub fn get_prefixed_url(&self, path: Option<String>) -> Option<String> {
         path.map(|p| format!("{}/{}", self.base_url, p))
     }
+
+    pub async fn delete_path(&self, full_path: String) -> anyhow::Result<()> {
+        let _ = self
+            .s3_client
+            .delete_object()
+            .bucket(&self.bucket_name)
+            .key(full_path)
+            .send()
+            .await
+            .context("failed to delete given path")
+            .unwrap();
+
+        Ok(())
+    }
 }

@@ -1,6 +1,6 @@
 use std::{collections::HashMap, str::FromStr};
 
-use axum::{extract::State, routing::post, Json, Router};
+use axum::{extract::State, http::StatusCode, routing::post, Json, Router};
 use mime2::Mime;
 use serde::{Deserialize, Serialize};
 use utoipa::{OpenApi, ToSchema};
@@ -11,7 +11,7 @@ use crate::app::{error::AppError, extrator::AuthUser, storage::path::S3Path, Api
 use super::docs::UPLOAD_TAG;
 
 #[derive(OpenApi)]
-#[openapi(paths(handle_upload))]
+#[openapi(paths(handle_upload, delete_s3_object))]
 pub struct UploadApi;
 
 #[derive(Debug, Validate, Deserialize, ToSchema)]
@@ -33,8 +33,14 @@ pub struct PresignedResult {
     headers: HashMap<String, String>,
 }
 
+#[derive(Debug, Validate, Deserialize, ToSchema)]
+pub struct DeleteInput {
+    pub path: S3Path,
+    pub file_name: String,
+}
+
 pub fn router() -> Router<ApiContext> {
-    Router::new().route("/upload", post(handle_upload))
+    Router::new().route("/upload", post(handle_upload).delete(delete_s3_object))
 }
 
 #[utoipa::path(
@@ -79,6 +85,33 @@ async fn handle_upload(
         method: request.method().to_string(),
         headers,
     }))
+}
+
+#[utoipa::path(
+    delete,
+    path = "",
+    tag = UPLOAD_TAG,
+    security(
+        ("bearerAuth" = [])
+    ),
+    request_body = DeleteInput,
+    responses(
+        (status = 204, description = "Successfully deleted"),
+        (status = 400, description = "Bad request"),
+        (status = 422, description = "Invalid input", body = AppError),
+        (status = 500, description = "Internal server error")
+    )
+)]
+#[tracing::instrument(name = "Delete S3 object", skip_all, fields(req = ?req))]
+async fn delete_s3_object(
+    auth_user: AuthUser,
+    ctx: State<ApiContext>,
+    Json(req): Json<DeleteInput>,
+) -> Result<StatusCode, AppError> {
+    let full_path = format!("{}/{}/{}", req.path, auth_user.user_id, req.file_name);
+    ctx.storage_client.delete_path(full_path).await?;
+
+    Ok(StatusCode::ACCEPTED)
 }
 
 fn validate_file_size(file_size: i64, path: &S3Path) -> Result<(), ValidationError> {
