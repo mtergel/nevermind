@@ -1,12 +1,11 @@
 use argon2::{password_hash::SaltString, Argon2, PasswordHash};
-use clap::Parser;
 use fake::{
     faker::internet::en::{Password, SafeEmail, Username},
     Fake,
 };
 use nevermind::{
     app::{get_db_connection_pool, get_redis_client, Application},
-    config::AppConfig,
+    config::{get_configuration, AppConfig},
     telemetry::{build_telemetry, register_telemetry},
 };
 use redis::AsyncCommands;
@@ -132,8 +131,6 @@ impl TestUser {
 }
 
 pub async fn spawn_app() -> TestApp {
-    dotenvy::dotenv().ok();
-
     LazyLock::force(&TELEMETRY);
 
     // lauch github oauth mock
@@ -141,24 +138,22 @@ pub async fn spawn_app() -> TestApp {
 
     // Randomise configuration to ensure test isolation
     let app_config = {
-        let mut c = AppConfig::parse();
+        let mut c = get_configuration().expect("failed to read config");
 
         // Use a different database for each test case
-        c.db_name = Uuid::new_v4().to_string();
+        c.db.name = format!("test-{}", Uuid::new_v4().to_string());
 
         // Use a random OS port
-        c.app_application_port = 0;
+        c.port = 0;
 
-        c.app_github_api_base_uri = oauth_mock_server.uri();
-        c.app_github_token_url = format!("{}/login/oauth/access_token", oauth_mock_server.uri());
+        c.github.api_base_url = oauth_mock_server.uri();
+        c.github.token_url = format!("{}/login/oauth/access_token", oauth_mock_server.uri());
 
-        c.app_discord_api_base_uri = oauth_mock_server.uri();
-        c.app_discord_token_url = format!("{}/api/v10/oauth2/token", oauth_mock_server.uri());
+        c.discord.api_base_url = oauth_mock_server.uri();
+        c.discord.token_url = format!("{}/api/v10/oauth2/token", oauth_mock_server.uri());
 
         c
     };
-
-    tracing::info!("App config: {:?}", &app_config);
 
     setup_database(&app_config).await;
 
@@ -192,21 +187,21 @@ pub async fn spawn_app() -> TestApp {
 async fn setup_database(config: &AppConfig) -> PgPool {
     // Connect to postgres instance and create new database
     let mut maintenance_config = config.clone();
-    maintenance_config.db_name = "postgres".to_string();
-    maintenance_config.db_username = "postgres".to_string();
+    maintenance_config.db.name = "postgres".to_string();
+    maintenance_config.db.username = "postgres".to_string();
 
     // Create database
-    let mut connection = PgConnection::connect_with(&maintenance_config.db_connect_options())
+    let mut connection = PgConnection::connect_with(&maintenance_config.db.db_connect_options())
         .await
         .expect("Failed to connect to Postgres");
 
     connection
-        .execute(format!(r#"CREATE DATABASE "{}";"#, config.db_name).as_str())
+        .execute(format!(r#"CREATE DATABASE "{}";"#, config.db.name).as_str())
         .await
         .expect("Failed to create database.");
 
     // Migrate database
-    let connection_pool = PgPool::connect_with(config.db_connect_options())
+    let connection_pool = PgPool::connect_with(config.db.db_connect_options())
         .await
         .expect("Failed to connect to Postgres.");
 

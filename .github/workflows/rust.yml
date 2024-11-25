@@ -13,24 +13,17 @@ env:
 
   STAGE: dev
 
-  APP_APPLICATION_HMAC: super-long-and-secret-random-key-needed-to-verify-message-integrity
-  APP_FROM_MAIL: ${{ secrets.APP_FROM_MAIL }}
-  APP_API_KEY: ${{ secrets.APP_API_KEY }}
-  APP_GITHUB_ID: ${{ vars.APP_GITHUB_ID }}
-  APP_GITHUB_SECRET: ${{ secrets.APP_GITHUB_SECRET }}
-  APP_DISCORD_ID: ${{ vars.APP_DISCORD_ID }}
-  APP_DISCORD_SECRET: ${{ secrets.APP_DISCORD_SECRET }}
+  APP_GITHUB__ID: ${{ vars.APP_GITHUB_ID }}
+  APP_GITHUB__SECRET: ${{ secrets.APP_GITHUB__SECRET }}
+  APP_DISCORD__ID: ${{ vars.APP_DISCORD__ID }}
+  APP_DISCORD__SECRET: ${{ secrets.APP_DISCORD__SECRET }}
 
-  DB_USERNAME: postgres
-  DB_PASSWORD: password
-
-  REDIS_URI: redis://127.0.0.1/
   DATABASE_URL: postgres://postgres:password@127.0.0.1:5432/nevermind
 
   AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
   AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-  AWS_S3_BUCKET: ${{ secrets.AWS_S3_BUCKET}}
-  AWS_CDN: ${{ secrets.AWS_CDN }}
+  APP_AWS__S3: ${{ vars.APP_AWS__S3}}
+  APP_AWS__CDN: ${{ vars.APP_AWS__CDN }}
 
 jobs:
   test:
