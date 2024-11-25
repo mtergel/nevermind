@@ -34,5 +34,5 @@ require_ssl = false
 uri = "redis://127.0.0.1/"
 
 [aws]
-s3_bucket = "dev"
+s3 = "dev"
 cdn = "cdn-here"
