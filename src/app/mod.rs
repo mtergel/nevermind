@@ -46,10 +46,7 @@ pub struct ApiContext {
 impl Application {
     pub async fn build(config: AppConfig) -> Result<Self, anyhow::Error> {
         // Connection
-        let addr = format!(
-            "{}:{}",
-            config.app_application_host, config.app_application_port
-        );
+        let addr = format!("{}:{}", config.host, config.port);
         let listener = TcpListener::bind(addr).await?;
         let port = listener.local_addr().unwrap().port();
 
@@ -57,17 +54,17 @@ impl Application {
         let db_pool = get_db_connection_pool(&config);
         let redis_client = get_redis_client(&config);
 
-        let token_manager = TokenManager::new(&config.app_application_hmac);
+        let token_manager = TokenManager::new(&config.hmac);
 
         let aws_config = get_aws_config().await;
         let email_client = EmailClient::new(
             &aws_config,
-            &config.app_from_mail,
-            &config.app_frontend_url,
+            &config.email.from_mail,
+            &config.frontend.url,
             config.stage == Stage::Dev,
         );
 
-        let storage_client = S3Storage::new(&aws_config, &config.aws_s3_bucket, &config.aws_cdn);
+        let storage_client = S3Storage::new(&aws_config, &config.aws.s3_bucket, &config.aws.cdn);
 
         // it uses arc internally
         let http_client = reqwest::Client::builder()
@@ -142,11 +139,11 @@ fn build_routes(api_context: ApiContext) -> Router {
 }
 
 pub fn get_db_connection_pool(config: &AppConfig) -> PgPool {
-    PgPoolOptions::new().connect_lazy_with(config.db_connect_options())
+    PgPoolOptions::new().connect_lazy_with(config.db.db_connect_options())
 }
 
 pub fn get_redis_client(config: &AppConfig) -> redis::Client {
-    redis::Client::open(config.redis_connection_string()).unwrap()
+    redis::Client::open(config.redis.uri.clone()).unwrap()
 }
 
 async fn get_aws_config() -> SdkConfig {
