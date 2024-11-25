@@ -11,7 +11,7 @@ pub struct UserScopes {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, sqlx::Type, ToSchema)]
-#[sqlx(type_name = "permission")]
+#[sqlx(type_name = "app_permission")]
 pub enum AppPermission {
     #[sqlx(rename = "user.view")]
     #[serde(rename = "user.view")]

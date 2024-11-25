@@ -133,6 +133,7 @@ impl Session {
         metadata: SessionMetadata,
         client: &Client,
         token_manager: &TokenManager,
+        scope: &str,
     ) -> anyhow::Result<Tokens> {
         let mut conn = client
             .get_multiplexed_tokio_connection()
@@ -140,8 +141,10 @@ impl Session {
             .context("failed to connect to redis")
             .unwrap();
 
-        let access_token = token_manager.generate_access_token(self.user_id, self.session_id);
-        let refresh_token = token_manager.generate_refresh_token(self.user_id, self.session_id);
+        let access_token =
+            token_manager.generate_access_token(self.user_id, self.session_id, scope.to_string());
+        let refresh_token =
+            token_manager.generate_refresh_token(self.user_id, self.session_id, scope.to_string());
 
         let data = SessionData {
             metadata,
@@ -177,6 +180,7 @@ impl Session {
         metadata: SessionMetadata,
         client: &Client,
         token_manager: &TokenManager,
+        scope: &str,
     ) -> anyhow::Result<Tokens> {
         let mut conn = client
             .get_multiplexed_tokio_connection()
@@ -184,8 +188,10 @@ impl Session {
             .context("failed to connect to redis")
             .unwrap();
 
-        let access_token = token_manager.generate_access_token(self.user_id, self.session_id);
-        let refresh_token = token_manager.generate_refresh_token(self.user_id, self.session_id);
+        let access_token =
+            token_manager.generate_access_token(self.user_id, self.session_id, scope.to_string());
+        let refresh_token =
+            token_manager.generate_refresh_token(self.user_id, self.session_id, scope.to_string());
 
         let data = SessionData {
             metadata,
