@@ -109,7 +109,7 @@ where
             .ok_or(AppError::Unauthorized)?;
 
         let token = auth_header.to_str().map_err(|_| AppError::Unauthorized)?;
-        if token != ctx.config.app_api_key.expose_secret() {
+        if token != ctx.config.api_key.expose_secret() {
             return Err(AppError::Unauthorized);
         }
 

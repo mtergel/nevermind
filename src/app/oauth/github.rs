@@ -53,10 +53,10 @@ pub async fn handle_github_assertion(
     code: &str,
 ) -> Result<Uuid, AppError> {
     let git_client = OAuthClient::new(
-        &config.app_github_id,
-        &config.app_github_secret,
-        &config.app_github_token_url,
-        &format!("{}/auth/oauth", &config.app_frontend_url),
+        &config.github.id,
+        &config.github.secret,
+        &config.github.token_url,
+        &format!("{}/auth/oauth", &config.frontend.url),
     );
 
     let token = git_client
@@ -65,7 +65,7 @@ pub async fn handle_github_assertion(
         .context("failed to exchange code for token")?;
 
     let user_data: GithubUser = http_client
-        .get(format!("{}/user", config.app_github_api_base_uri))
+        .get(format!("{}/user", config.github.api_base_url))
         .bearer_auth(&token)
         .header("Accept", "application/json")
         .header("X-GitHub-Api-Version", "2022-11-28")
@@ -85,7 +85,7 @@ pub async fn handle_github_assertion(
     if user_data_email.is_none() {
         // fetch email
         let user_email_list: Vec<GithubUserEmail> = http_client
-            .get(format!("{}/user/emails", config.app_github_api_base_uri))
+            .get(format!("{}/user/emails", config.github.api_base_url))
             .bearer_auth(&token)
             .header("Accept", "application/json")
             .header("X-GitHub-Api-Version", "2022-11-28")

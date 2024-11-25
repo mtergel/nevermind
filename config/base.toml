@@ -1,0 +1,38 @@
+port = 8080
+host = "0.0.0.0"
+hmac = "super-long-and-secret-random-key-needed-to-verify-message-integrity"
+api_key = "for-x-api-key"
+
+[frontend]
+url = "http://127.0.0.1:3000"
+
+[email]
+from_mail = "info@letsyahu.online"
+account_email_limit = 6
+
+[github]
+id = "client-id"
+secret = "client-secret"
+token_url = "https://github.com/login/oauth/access_token"
+api_base_url = "https://api.github.com"
+
+[discord]
+id = "client-id"
+secret = "client-secret"
+token_url = "https://discord.com/api/v10/oauth2/token"
+api_base_url = "https://discord.com/api"
+
+[db]
+host = "127.0.0.1"
+port = 5432
+username = "postgres"
+password = "password"
+name = "nevermind"
+require_ssl = false
+
+[redis]
+uri = "redis://127.0.0.1/"
+
+[aws]
+s3 = "dev"
+cdn = "cdn-here"

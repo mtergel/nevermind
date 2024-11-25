@@ -45,10 +45,10 @@ pub async fn handle_discord_assertion(
     code: &str,
 ) -> Result<Uuid, AppError> {
     let discord_client = OAuthClient::new(
-        &config.app_discord_id,
-        &config.app_discord_secret,
-        &config.app_discord_token_url,
-        &format!("{}/auth/oauth", &config.app_frontend_url),
+        &config.discord.id,
+        &config.discord.secret,
+        &config.discord.token_url,
+        &format!("{}/auth/oauth", &config.frontend.url),
     );
 
     let token = discord_client
@@ -57,7 +57,7 @@ pub async fn handle_discord_assertion(
         .context("failed to exchange code for token")?;
 
     let user_data: DiscordUser = http_client
-        .get(format!("{}/users/@me", config.app_discord_api_base_uri))
+        .get(format!("{}/users/@me", config.discord.api_base_url))
         .header("Accept", "application/json")
         .header("User-Agent", "Let's Yahu".to_owned())
         .bearer_auth(&token)

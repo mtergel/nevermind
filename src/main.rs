@@ -1,16 +1,12 @@
-use clap::Parser;
 use nevermind::{
     app::Application,
-    config::AppConfig,
+    config::get_configuration,
     telemetry::{build_telemetry, register_telemetry},
 };
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
-    // Config setup
-    dotenvy::dotenv().ok();
-
-    let app_config = AppConfig::parse();
+    let app_config = get_configuration().expect("failed to read configuration");
     let app = Application::build(app_config).await?;
 
     // Setup telemetry

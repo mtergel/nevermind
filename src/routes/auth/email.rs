@@ -99,7 +99,7 @@ pub async fn add_email(
     .await?
     .unwrap_or_default();
 
-    if email_count >= ctx.config.app_application_account_email_limit.into() {
+    if email_count >= ctx.config.email.account_email_limit.into() {
         return Err(AppError::unprocessable_entity([("email", "limit")]));
     }
 
@@ -241,7 +241,7 @@ pub async fn list_user_email(
             limit $2
         "#,
         auth_user.user_id,
-        ctx.config.app_application_account_email_limit as i64
+        ctx.config.email.account_email_limit as i64
     )
     .fetch(&*ctx.db_pool)
     .map_ok(EmailFromQuery::into_email)
