@@ -1,3 +1,5 @@
+use std::collections::HashSet;
+
 use axum::{
     async_trait,
     extract::{FromRef, FromRequest, FromRequestParts, Json, Request},
@@ -8,7 +10,11 @@ use serde::de::DeserializeOwned;
 use uuid::Uuid;
 use validator::Validate;
 
-use super::{auth::token::AccessTokenClaims, error::AppError, ApiContext};
+use super::{
+    auth::{scope::AppPermission, token::AccessTokenClaims},
+    error::AppError,
+    ApiContext,
+};
 
 /// Add this as a parameter to a handler function to
 /// extract body into validated JSON.
@@ -42,6 +48,13 @@ where
 pub struct AuthUser {
     pub user_id: Uuid,
     pub session_id: Uuid,
+    pub scopes: HashSet<AppPermission>,
+}
+
+impl AuthUser {
+    pub fn has_permission(&self, permission: &AppPermission) -> bool {
+        self.scopes.contains(permission)
+    }
 }
 
 const SCHEME_PREFIX: &str = "Bearer ";
@@ -77,13 +90,21 @@ where
 
         tracing::Span::current().record("user_id", tracing::field::display(&user.sub));
 
+        let scopes =
+            AppPermission::parse_permissions(&user.scope).map_err(|_| AppError::Unauthorized)?;
+
         Ok(AuthUser {
             user_id: user.sub,
             session_id: user.sid,
+            scopes,
         })
     }
 }
 
+// TODO:
+// This should not be a extractor
+// There is no data to extract
+// Move this to middleware
 const API_KEY_HEADER: &str = "X-Api-Key";
 
 /// Add this as a parameter to a handler function to require a api key to process.

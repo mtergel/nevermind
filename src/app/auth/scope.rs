@@ -1,3 +1,5 @@
+use std::{collections::HashSet, str::FromStr};
+
 use serde::{Deserialize, Serialize};
 use sqlx::PgPool;
 use utoipa::ToSchema;
@@ -10,7 +12,7 @@ pub struct UserScopes {
     pub scopes: Vec<AppPermission>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, sqlx::Type, ToSchema)]
+#[derive(Debug, Clone, Hash, PartialEq, Eq, Serialize, Deserialize, sqlx::Type, ToSchema)]
 #[sqlx(type_name = "app_permission")]
 pub enum AppPermission {
     #[sqlx(rename = "user.view")]
@@ -36,6 +38,28 @@ impl std::fmt::Display for UserScopes {
             .collect::<Vec<String>>()
             .join(" ");
         write!(f, "{}", scopes_str)
+    }
+}
+
+impl FromStr for AppPermission {
+    type Err = String;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s {
+            "user.view" => Ok(Self::UserView),
+            _ => Err(format!("Unknown permission: {}", s)),
+        }
+    }
+}
+
+impl AppPermission {
+    /// Converts a space-separated string of permissions into a HashSet of AppPermission.
+    pub fn parse_permissions(permission_str: &str) -> Result<HashSet<AppPermission>, String> {
+        permission_str
+            .split_whitespace()
+            .map(str::to_string)
+            .map(|perm| AppPermission::from_str(&perm))
+            .collect()
     }
 }
 

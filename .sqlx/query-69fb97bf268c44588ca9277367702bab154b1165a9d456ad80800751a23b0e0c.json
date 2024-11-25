@@ -1,0 +1,31 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            select rp.permission as \"permission!: AppPermission\"\n            from user_role ur\n            join role_permission rp\n                on ur.role = rp.role\n            where ur.user_id = $1 \n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "permission!: AppPermission",
+        "type_info": {
+          "Custom": {
+            "name": "app_permission",
+            "kind": {
+              "Enum": [
+                "user.view"
+              ]
+            }
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "69fb97bf268c44588ca9277367702bab154b1165a9d456ad80800751a23b0e0c"
+}
