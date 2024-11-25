@@ -93,7 +93,7 @@ pub struct RedisConfig {
 
 #[derive(Deserialize, Clone)]
 pub struct AWSConfig {
-    pub s3_bucket: String,
+    pub s3: String,
     pub cdn: String,
 }
 

@@ -64,7 +64,7 @@ impl Application {
             config.stage == Stage::Dev,
         );
 
-        let storage_client = S3Storage::new(&aws_config, &config.aws.s3_bucket, &config.aws.cdn);
+        let storage_client = S3Storage::new(&aws_config, &config.aws.s3, &config.aws.cdn);
 
         // it uses arc internally
         let http_client = reqwest::Client::builder()
