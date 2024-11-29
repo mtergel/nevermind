@@ -1,5 +1,5 @@
 use crate::app::ApiContext;
-use crate::routes::{auth::AuthApi, oauth::OAuthApi, upload::UploadApi};
+use crate::routes::{auth::AuthApi, oauth::OAuthApi, upload::UploadApi, users::UsersApi};
 use axum::{routing::get, Json, Router};
 use utoipa::openapi::security::{ApiKey, ApiKeyValue, HttpAuthScheme, HttpBuilder, SecurityScheme};
 use utoipa::openapi::Components;
@@ -13,6 +13,7 @@ pub const AUTH_TAG: &str = "auth";
 pub const EMAIL_TAG: &str = "email";
 pub const SESSION_TAG: &str = "session";
 pub const UPLOAD_TAG: &str = "upload";
+pub const ADMIN_TAG: &str = "admin";
 
 #[derive(OpenApi)]
 #[openapi(
@@ -25,6 +26,9 @@ pub const UPLOAD_TAG: &str = "upload";
         ),
         (
             path = "/upload", api = UploadApi
+        ),
+        (
+            path = "/users", api = UsersApi
         )
     ),
     modifiers(&SecurityAddon)

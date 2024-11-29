@@ -54,6 +54,7 @@ impl FromStr for AppPermission {
 
 impl AppPermission {
     /// Converts a space-separated string of permissions into a HashSet of AppPermission.
+    #[tracing::instrument(name = "Parse scope string")]
     pub fn parse_permissions(permission_str: &str) -> Result<HashSet<AppPermission>, String> {
         permission_str
             .split_whitespace()
