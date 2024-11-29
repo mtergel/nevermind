@@ -12,11 +12,12 @@ use redis::AsyncCommands;
 use serde::Deserialize;
 use sqlx::{Connection, Executor, PgConnection, PgPool};
 use std::sync::LazyLock;
+use time::{format_description, OffsetDateTime};
 use uuid::Uuid;
 use wiremock::MockServer;
 
 static TELEMETRY: LazyLock<()> = LazyLock::new(|| {
-    let default_filter_level = "info".to_string();
+    let default_filter_level = "debug".to_string();
     let subscriber_name = "test".to_string();
 
     if std::env::var("TEST_LOG").is_ok() {
@@ -140,8 +141,17 @@ pub async fn spawn_app() -> TestApp {
     let app_config = {
         let mut c = get_configuration().expect("failed to read config");
 
+        // Get the current date and time in UTC
+        let now = OffsetDateTime::now_utc();
+
+        // Parse the format description to a `format_description::FormatItem`
+        let format = format_description::parse("[year]-[month]-[day]T[hour]:[minute]:[second]")
+            .expect("Failed to parse datetime format");
+
+        let datetime_str = now.format(&format).expect("failed to format datetime");
+
         // Use a different database for each test case
-        c.db.name = format!("test-{}", Uuid::new_v4().to_string());
+        c.db.name = format!("test-{}-{}", datetime_str, Uuid::new_v4());
 
         // Use a random OS port
         c.port = 0;
