@@ -6,12 +6,16 @@ use crate::{app::ApiContext, permission_required};
 
 pub mod users;
 
-pub fn router() -> Router<ApiContext> {
+fn users_router() -> Router<ApiContext> {
     Router::new()
         .route("/users", get(list_users))
         .route_layer(permission_required!(&AppPermission::UserView))
 }
 
+pub fn router() -> Router<ApiContext> {
+    Router::new().nest("/admin", Router::new().merge(users_router()))
+}
+
 #[derive(OpenApi)]
 #[openapi(paths(users::list_users))]
-pub struct UsersApi;
+pub struct AdminApi;

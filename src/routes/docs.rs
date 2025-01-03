@@ -1,5 +1,5 @@
 use crate::app::ApiContext;
-use crate::routes::{auth::AuthApi, oauth::OAuthApi, upload::UploadApi, users::UsersApi};
+use crate::routes::{admin::AdminApi, auth::AuthApi, oauth::OAuthApi, upload::UploadApi};
 use axum::{routing::get, Json, Router};
 use utoipa::openapi::security::{ApiKey, ApiKeyValue, HttpAuthScheme, HttpBuilder, SecurityScheme};
 use utoipa::openapi::Components;
@@ -28,7 +28,7 @@ pub const ADMIN_TAG: &str = "admin";
             path = "/upload", api = UploadApi
         ),
         (
-            path = "/users", api = UsersApi
+            path = "/admin", api = AdminApi
         )
     ),
     modifiers(&SecurityAddon)

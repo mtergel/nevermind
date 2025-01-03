@@ -72,7 +72,7 @@ macro_rules! permission_required {
             middleware::{from_fn, Next},
         };
 
-        use crate::{
+        use $crate::{
             app::{auth::scope::AppPermission, error::AppError, extrator::AuthUser},
         };
 

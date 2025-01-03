@@ -25,7 +25,7 @@ pub mod utils;
 
 use crate::{
     config::{AppConfig, Stage},
-    routes::{auth as auth_route, docs, health_check, oauth as oauth_route, upload, users},
+    routes::{admin, auth as auth_route, docs, health_check, oauth as oauth_route, upload},
 };
 
 pub struct Application {
@@ -114,7 +114,7 @@ fn build_routes(api_context: ApiContext) -> Router {
     let protected = Router::new()
         .merge(auth_route::router())
         .merge(upload::router())
-        .merge(users::router())
+        .merge(admin::router())
         .layer(from_fn_with_state(api_context.clone(), login_required));
 
     Router::new()

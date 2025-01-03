@@ -7,7 +7,7 @@ use crate::{
 
 #[utoipa::path(
     get,
-    path = "",
+    path = "/admin/users",
     tag = ADMIN_TAG,
     security(
         ("bearerAuth" = ["user.view"])
