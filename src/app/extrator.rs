@@ -1,7 +1,6 @@
 use std::collections::HashSet;
 
 use axum::{
-    async_trait,
     extract::{FromRequest, FromRequestParts, Json, Request},
     http::request::Parts,
 };
@@ -21,7 +20,6 @@ use super::{auth::scope::AppPermission, error::AppError};
 #[derive(Debug, Clone, Copy, Default)]
 pub struct ValidatedJson<T>(pub T);
 
-#[async_trait]
 impl<T, S> FromRequest<S> for ValidatedJson<T>
 where
     T: DeserializeOwned + Validate,
@@ -52,7 +50,6 @@ impl AuthUser {
     }
 }
 
-#[async_trait]
 impl<S> FromRequestParts<S> for AuthUser
 where
     S: Send + Sync,
@@ -64,6 +61,6 @@ where
             .extensions
             .get::<AuthUser>()
             .cloned()
-            .ok_or(anyhow::anyhow!("Can't extract auth user. Wrap with auth_required").into())
+            .ok_or(anyhow::anyhow!("Can't extract auth user. Wrap with login_required").into())
     }
 }

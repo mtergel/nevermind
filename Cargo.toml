@@ -9,7 +9,7 @@ argon2 = "0.5.3"
 aws-config = "1.5.8"
 aws-sdk-s3 = "1.57.0"
 aws-sdk-sesv2 = "1.50.0"
-axum = { version = "0.7.7", features = ["macros", "json"] }
+axum = { version = "0.8.1", features = ["macros", "json"] }
 base32 = "0.5.1"
 config = "0.14.1"
 futures = "0.3.31"
@@ -31,7 +31,7 @@ sqlx = { version = "0.8.2", features = [
     "uuid",
     "time",
 ] }
-thiserror = "1.0.64"
+thiserror = "2.0.9"
 time = { version = "0.3.36", features = ["formatting"] }
 tokio = { version = "1.40.0", features = ["full"] }
 tower-http = { version = "0.6.1", features = ["trace"] }
@@ -44,8 +44,8 @@ tracing-subscriber = { version = "0.3.18", features = [
 url = "2.5.3"
 utoipa = { version = "5.1.1", features = ["axum_extras", "time", "uuid"] }
 uuid = { version = "1.10.0", features = ["v4", "serde"] }
-validator = { version = "0.18.1", features = ["derive"] }
+validator = { version = "0.19.0", features = ["derive"] }
 
 [dev-dependencies]
-fake = "2.10.0"
+fake = "3.1.0"
 wiremock = "0.6.2"
