@@ -1,0 +1,25 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            insert into user_role (user_id, role)\n            values ($1, $2::app_role)\n        ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        {
+          "Custom": {
+            "name": "app_role",
+            "kind": {
+              "Enum": [
+                "root",
+                "moderator"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "f4fc0c5a479469c92c8a044c2f82ef29211dadce4d066c5a94a9c99c3fc990d2"
+}
