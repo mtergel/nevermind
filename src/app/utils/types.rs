@@ -17,23 +17,23 @@ impl Serialize for Timestamptz {
     }
 }
 
-impl<'de> Deserialize<'de> for Timestamptz {
+impl Deserialize<'_> for Timestamptz {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
     where
-        D: Deserializer<'de>,
+        D: Deserializer<'_>,
     {
         struct StrVisitor;
 
         impl<'de> Visitor<'de> for StrVisitor {
             type Value = Timestamptz;
 
-            fn expecting(&self, f: &mut Formatter) -> std::fmt::Result {
+            fn expecting(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
                 f.write_str("expected a valid RFC 3339 date string")
             }
 
             fn visit_str<E>(self, v: &str) -> Result<Self::Value, E>
             where
-                E: serde::de::Error,
+                E: de::Error,
             {
                 OffsetDateTime::parse(v, &Rfc3339)
                     .map(Timestamptz)
