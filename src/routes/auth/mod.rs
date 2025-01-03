@@ -33,6 +33,7 @@ pub fn router() -> Router<ApiContext> {
         .route("/auth/sessions/revoke", delete(revoke_session))
 }
 
+// Called when the user is logging out from the Next.js server
 pub fn api_key_protected() -> Router<ApiContext> {
     Router::new().route("/auth/sessions/:id/revoke", delete(revoke_session_by_id))
 }

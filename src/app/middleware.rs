@@ -14,6 +14,7 @@ use super::{
 };
 
 const SCHEME_PREFIX: &str = "Bearer ";
+const API_KEY_HEADER: &str = "X-Api-Key";
 
 /// Login required middleware
 ///
@@ -58,8 +59,6 @@ pub async fn login_required(
 
     Ok(next.run(req).await)
 }
-
-const API_KEY_HEADER: &str = "X-Api-Key";
 
 /// X-Api-Key header required middleware
 ///

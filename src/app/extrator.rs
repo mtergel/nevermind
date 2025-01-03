@@ -64,6 +64,6 @@ where
             .extensions
             .get::<AuthUser>()
             .cloned()
-            .ok_or(anyhow::anyhow!("Can't extract auth user. Wrap with login_required").into())
+            .ok_or(anyhow::anyhow!("Can't extract auth user. Wrap with auth_required").into())
     }
 }

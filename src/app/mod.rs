@@ -118,12 +118,15 @@ fn build_routes(api_context: ApiContext) -> Router {
     let protected = Router::new()
         .merge(auth_route::router())
         .merge(upload::router())
-        .merge(admin::router())
-        .layer(from_fn_with_state(api_context.clone(), login_required));
+        .merge(admin::router()) // Has extra permission route_layer inside
+        .route_layer(from_fn_with_state(api_context.clone(), login_required));
 
     let api_key_protected = Router::new()
         .merge(auth_route::api_key_protected())
-        .layer(from_fn_with_state(api_context.clone(), api_key_required));
+        .route_layer(from_fn_with_state(api_context.clone(), api_key_required));
+
+    // Incoming request goes through middleware from bottom to top
+    // and outgoing request goes through middleware from top to bottom
 
     Router::new()
         .merge(health_check::router())
