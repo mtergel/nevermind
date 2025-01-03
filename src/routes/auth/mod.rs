@@ -24,10 +24,13 @@ pub fn router() -> Router<ApiContext> {
         .route("/auth/me", get(get_me_profile).patch(update_me_profile))
         .route("/auth/me/complete", post(complete_me_profile))
         .route("/auth/emails", post(add_email).get(list_user_email))
-        .route("/auth/emails/:id", delete(delete_user_email))
-        .route("/auth/emails/verify/:token", post(verify_email))
+        .route("/auth/emails/{id}", delete(delete_user_email))
+        .route("/auth/emails/verify/{token}", post(verify_email))
         .route("/auth/emails/resend", post(resend_email_verification))
-        .route("/auth/emails/:id/primary", patch(update_email_to_primary))
+        .route(
+            "/auth/emails/{token}/primary",
+            patch(update_email_to_primary),
+        )
         .route("/auth/change-password", post(change_password))
         .route("/auth/sessions", get(list_active_sessions))
         .route("/auth/sessions/revoke", delete(revoke_session))
@@ -35,7 +38,7 @@ pub fn router() -> Router<ApiContext> {
 
 // Called when the user is logging out from the Next.js server
 pub fn api_key_protected() -> Router<ApiContext> {
-    Router::new().route("/auth/sessions/:id/revoke", delete(revoke_session_by_id))
+    Router::new().route("/auth/sessions/{id}/revoke", delete(revoke_session_by_id))
 }
 
 pub fn public_router() -> Router<ApiContext> {
