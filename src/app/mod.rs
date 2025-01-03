@@ -2,7 +2,7 @@ use auth::token::TokenManager;
 use aws_config::{meta::region::RegionProviderChain, BehaviorVersion, SdkConfig};
 use axum::{middleware::from_fn_with_state, Router};
 use email::client::EmailClient;
-use middleware::login_required;
+use middleware::{api_key_required, login_required};
 use sqlx::{postgres::PgPoolOptions, PgPool};
 use std::sync::Arc;
 use storage::client::S3Storage;
@@ -25,7 +25,11 @@ pub mod utils;
 
 use crate::{
     config::{AppConfig, Stage},
-    routes::{admin, auth as auth_route, docs, health_check, oauth as oauth_route, upload},
+    routes::{
+        admin,
+        auth::{self as auth_route},
+        docs, health_check, oauth as oauth_route, upload,
+    },
 };
 
 pub struct Application {
@@ -117,12 +121,17 @@ fn build_routes(api_context: ApiContext) -> Router {
         .merge(admin::router())
         .layer(from_fn_with_state(api_context.clone(), login_required));
 
+    let api_key_protected = Router::new()
+        .merge(auth_route::api_key_protected())
+        .layer(from_fn_with_state(api_context.clone(), api_key_required));
+
     Router::new()
         .merge(health_check::router())
         .merge(docs::router())
         .merge(oauth_route::router())
         .merge(auth_route::public_router())
         .merge(protected)
+        .merge(api_key_protected)
         .with_state(api_context)
         .layer(
             TraceLayer::new_for_http()

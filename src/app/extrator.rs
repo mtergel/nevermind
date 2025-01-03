@@ -2,15 +2,14 @@ use std::collections::HashSet;
 
 use axum::{
     async_trait,
-    extract::{FromRef, FromRequest, FromRequestParts, Json, Request},
+    extract::{FromRequest, FromRequestParts, Json, Request},
     http::request::Parts,
 };
-use secrecy::ExposeSecret;
 use serde::de::DeserializeOwned;
 use uuid::Uuid;
 use validator::Validate;
 
-use super::{auth::scope::AppPermission, error::AppError, ApiContext};
+use super::{auth::scope::AppPermission, error::AppError};
 
 /// Add this as a parameter to a handler function to
 /// extract body into validated JSON.
@@ -66,42 +65,5 @@ where
             .get::<AuthUser>()
             .cloned()
             .ok_or(anyhow::anyhow!("Can't extract auth user. Wrap with login_required").into())
-    }
-}
-
-// TODO:
-// This should not be a extractor
-// There is no data to extract
-// Move this to middleware
-const API_KEY_HEADER: &str = "X-Api-Key";
-
-/// Add this as a parameter to a handler function to require a api key to process.
-///
-/// Parses a key from the `X-Api-Key: <token>` header.
-#[derive(Debug)]
-pub struct ApiKey;
-
-#[async_trait]
-impl<S> FromRequestParts<S> for ApiKey
-where
-    S: Send + Sync,
-    ApiContext: FromRef<S>,
-{
-    type Rejection = AppError;
-
-    async fn from_request_parts(parts: &mut Parts, state: &S) -> Result<Self, Self::Rejection> {
-        let ctx: ApiContext = ApiContext::from_ref(state);
-
-        let auth_header = parts
-            .headers
-            .get(API_KEY_HEADER)
-            .ok_or(AppError::Unauthorized)?;
-
-        let token = auth_header.to_str().map_err(|_| AppError::Unauthorized)?;
-        if token != ctx.config.api_key.expose_secret() {
-            return Err(AppError::Unauthorized);
-        }
-
-        Ok(ApiKey)
     }
 }

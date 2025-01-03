@@ -1,3 +1,4 @@
+use reqwest::StatusCode;
 use secrecy::ExposeSecret;
 use serde::Deserialize;
 
@@ -134,4 +135,51 @@ async fn revoke_session_by_id_works() {
 
     let data = res.json::<Vec<SessionData>>().await.unwrap();
     assert_eq!(data.len(), 0);
+}
+
+#[tokio::test]
+async fn revoke_session_by_id_fails_if_api_key_is_wrong() {
+    let app = spawn_app().await;
+
+    let revoke_body = serde_json::json!({
+        "user_id": &app.test_user.user_id
+    });
+
+    // send request as machine
+    let res = app
+        .api_client
+        .delete(&format!(
+            "{}/auth/sessions/{}/revoke",
+            &app.address, "some-id"
+        ))
+        .header("X-Api-Key", "some-random-key")
+        .json(&revoke_body)
+        .send()
+        .await
+        .expect("failed to execute request");
+
+    assert_eq!(res.status(), StatusCode::UNAUTHORIZED);
+}
+
+#[tokio::test]
+async fn revoke_session_by_id_fails_if_api_key_is_missing() {
+    let app = spawn_app().await;
+
+    let revoke_body = serde_json::json!({
+        "user_id": &app.test_user.user_id
+    });
+
+    // send request as machine
+    let res = app
+        .api_client
+        .delete(&format!(
+            "{}/auth/sessions/{}/revoke",
+            &app.address, "some-id"
+        ))
+        .json(&revoke_body)
+        .send()
+        .await
+        .expect("failed to execute request");
+
+    assert_eq!(res.status(), StatusCode::UNAUTHORIZED);
 }
