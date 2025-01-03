@@ -1,5 +1,5 @@
-use serde::de::Visitor;
-use serde::{Deserialize, Deserializer, Serialize, Serializer};
+use serde::de;
+use serde::{Serialize, Serializer};
 use std::fmt::Formatter;
 use time::format_description::well_known::Rfc3339;
 use time::OffsetDateTime;
@@ -17,23 +17,23 @@ impl Serialize for Timestamptz {
     }
 }
 
-impl Deserialize<'_> for Timestamptz {
+impl<'de> de::Deserialize<'de> for Timestamptz {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
     where
-        D: Deserializer<'_>,
+        D: de::Deserializer<'de>,
     {
         struct StrVisitor;
 
-        impl<'de> Visitor<'de> for StrVisitor {
+        impl de::Visitor<'_> for StrVisitor {
             type Value = Timestamptz;
 
-            fn expecting(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+            fn expecting(&self, f: &mut Formatter) -> std::fmt::Result {
                 f.write_str("expected a valid RFC 3339 date string")
             }
 
             fn visit_str<E>(self, v: &str) -> Result<Self::Value, E>
             where
-                E: de::Error,
+                E: serde::de::Error,
             {
                 OffsetDateTime::parse(v, &Rfc3339)
                     .map(Timestamptz)
