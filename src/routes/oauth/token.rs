@@ -179,10 +179,11 @@ async fn owner_password_flow(
         Ok(user_id) => {
             tracing::Span::current().record("user_id", tracing::field::display(&user_id));
 
-            let session = Session::new(user_id);
-            let tokens = session.insert(metadata, client, token_manager).await?;
-
             let scopes = get_scopes(user_id, pool).await?;
+            let session = Session::new(user_id);
+            let tokens = session
+                .insert(metadata, client, token_manager, &scopes.to_string())
+                .await?;
 
             Ok(GrantResponse {
                 access_token: tokens.access_token,
@@ -231,8 +232,10 @@ async fn refresh_token_flow(
     tracing::Span::current().record("user_id", tracing::field::display(&claims.sub));
 
     // if session is valid
-    let tokens = session.renew(metadata, client, token_manager).await?;
     let scopes = get_scopes(claims.sub, pool).await?;
+    let tokens = session
+        .renew(metadata, client, token_manager, &scopes.to_string())
+        .await?;
 
     Ok(GrantResponse {
         access_token: tokens.access_token,
@@ -285,8 +288,10 @@ async fn assertion_flow(
     tracing::Span::current().record("user_id", tracing::field::display(&user_id));
 
     let session = Session::new(user_id);
-    let tokens = session.insert(metadata, client, token_manager).await?;
     let scopes = get_scopes(user_id, pool).await?;
+    let tokens = session
+        .insert(metadata, client, token_manager, &scopes.to_string())
+        .await?;
 
     Ok(GrantResponse {
         access_token: tokens.access_token,

@@ -1,5 +1,5 @@
-use serde::de::Visitor;
-use serde::{Deserialize, Deserializer, Serialize, Serializer};
+use serde::de;
+use serde::{Serialize, Serializer};
 use std::fmt::Formatter;
 use time::format_description::well_known::Rfc3339;
 use time::OffsetDateTime;
@@ -17,14 +17,14 @@ impl Serialize for Timestamptz {
     }
 }
 
-impl<'de> Deserialize<'de> for Timestamptz {
+impl<'de> de::Deserialize<'de> for Timestamptz {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
     where
-        D: Deserializer<'de>,
+        D: de::Deserializer<'de>,
     {
         struct StrVisitor;
 
-        impl<'de> Visitor<'de> for StrVisitor {
+        impl de::Visitor<'_> for StrVisitor {
             type Value = Timestamptz;
 
             fn expecting(&self, f: &mut Formatter) -> std::fmt::Result {

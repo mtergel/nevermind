@@ -1,34 +1,32 @@
-use anyhow::Context;
+use std::{collections::HashSet, str::FromStr};
+
 use serde::{Deserialize, Serialize};
 use sqlx::PgPool;
+use utoipa::ToSchema;
 use uuid::Uuid;
 
 use crate::app::error::AppError;
 
-#[derive(Debug, Clone, Deserialize, Serialize)]
-pub enum Scope {
-    #[serde(rename = "public")]
-    Public,
-
-    #[serde(rename = "write:user")]
-    WriteUser,
+#[derive(Clone)]
+pub struct UserScopes {
+    pub scopes: Vec<AppPermission>,
 }
 
-impl std::fmt::Display for Scope {
+#[derive(Debug, Clone, Hash, PartialEq, Eq, Serialize, Deserialize, sqlx::Type, ToSchema)]
+#[sqlx(type_name = "app_permission")]
+pub enum AppPermission {
+    #[sqlx(rename = "user.view")]
+    #[serde(rename = "user.view")]
+    UserView,
+}
+
+impl std::fmt::Display for AppPermission {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         let scope_str = match self {
-            Scope::Public => "public",
-            Scope::WriteUser => "write:user",
+            AppPermission::UserView => "user.view",
         };
         write!(f, "{}", scope_str)
     }
-}
-
-const UNVERIFIED_USER_SCOPES: &[Scope] = &[Scope::Public];
-const USER_SCOPES: &[Scope] = &[Scope::WriteUser];
-
-pub struct UserScopes {
-    pub scopes: Vec<Scope>,
 }
 
 impl std::fmt::Display for UserScopes {
@@ -43,26 +41,43 @@ impl std::fmt::Display for UserScopes {
     }
 }
 
+impl FromStr for AppPermission {
+    type Err = String;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s {
+            "user.view" => Ok(Self::UserView),
+            _ => Err(format!("Unknown permission: {}", s)),
+        }
+    }
+}
+
+impl AppPermission {
+    /// Converts a space-separated string of permissions into a HashSet of AppPermission.
+    #[tracing::instrument(name = "Parse scope string")]
+    pub fn parse_permissions(permission_str: &str) -> Result<HashSet<AppPermission>, String> {
+        permission_str
+            .split_whitespace()
+            .map(str::to_string)
+            .map(|perm| AppPermission::from_str(&perm))
+            .collect()
+    }
+}
+
 #[tracing::instrument(name = "Get user scopes", skip_all)]
 pub async fn get_scopes(user_id: Uuid, pool: &PgPool) -> Result<UserScopes, AppError> {
-    let verified = sqlx::query_scalar!(
+    let scopes = sqlx::query_scalar!(
         r#"
-            select verified
-            from email
-            where user_id = $1 and is_primary = true
+            select rp.permission as "permission!: AppPermission"
+            from user_role ur
+            join role_permission rp
+                on ur.role = rp.role
+            where ur.user_id = $1 
         "#,
         user_id
     )
-    .fetch_one(pool)
-    .await
-    .context("failed to retrieve permissions")
-    .unwrap();
-
-    let mut scopes: Vec<Scope> = UNVERIFIED_USER_SCOPES.to_vec();
-
-    if verified {
-        scopes.append(&mut USER_SCOPES.to_vec());
-    }
+    .fetch_all(pool)
+    .await?;
 
     Ok(UserScopes { scopes })
 }

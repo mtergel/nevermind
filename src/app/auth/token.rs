@@ -25,6 +25,8 @@ pub struct AccessTokenClaims {
     pub sid: Uuid,
     /// Expires in
     pub exp: i64,
+    /// Scopes, space separeted scope tokens
+    pub scope: String,
 }
 
 #[derive(Serialize, Deserialize)]
@@ -35,6 +37,8 @@ pub struct RefreshTokenClaims {
     pub sid: Uuid,
     /// Expires in
     pub exp: i64,
+    /// Scopes, space separeted scope tokens
+    pub scope: String,
 }
 
 impl Claims for AccessTokenClaims {
@@ -90,11 +94,12 @@ impl TokenManager {
     }
 
     #[tracing::instrument(name = "Genereate access token", skip_all)]
-    pub fn generate_access_token(&self, user_id: Uuid, session_id: Uuid) -> String {
+    pub fn generate_access_token(&self, user_id: Uuid, session_id: Uuid, scope: String) -> String {
         let access_token = AccessTokenClaims {
             sid: session_id,
             sub: user_id,
             exp: (OffsetDateTime::now_utc() + ACCESS_TOKEN_LENGTH).unix_timestamp(),
+            scope,
         }
         .sign_with_key(&self.secret)
         .expect("HMAC signing should be infallible");
@@ -103,11 +108,12 @@ impl TokenManager {
     }
 
     #[tracing::instrument(name = "Genereate refresh token", skip_all)]
-    pub fn generate_refresh_token(&self, user_id: Uuid, session_id: Uuid) -> String {
+    pub fn generate_refresh_token(&self, user_id: Uuid, session_id: Uuid, scope: String) -> String {
         let refresh_token = RefreshTokenClaims {
             sid: session_id,
             sub: user_id,
             exp: (OffsetDateTime::now_utc() + REFRESH_TOKEN_LENGTH).unix_timestamp(),
+            scope,
         }
         .sign_with_key(&self.secret)
         .expect("HMAC signing should be infallible");
