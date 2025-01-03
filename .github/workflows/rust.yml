@@ -93,6 +93,30 @@ jobs:
       - name: 🧪 Run tests
         run: cargo test
 
+  offline_query:
+    name: Format
+    runs-on: ubuntu-latest
+    needs: pre_job
+    if: ${{ needs.pre_job.outputs.should_skip != 'true' }}
+
+    steps:
+      - name: 🏗 Setup repo
+        uses: actions/checkout@v4
+
+      - name: 🏗 Setup rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt
+
+      - name: 🏗 Install sqlx
+        uses: baptiste0928/cargo-install@v3
+        with:
+          crate: sqlx-cli
+          features: postgres
+
+      - name: 🏗 Setup Database
+        run: sqlx db setup
+
       - name: 🔨 Check if offline queries are fresh
         run: cargo sqlx prepare --workspace --check -- --all-targets
 
