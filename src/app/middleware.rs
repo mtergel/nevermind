@@ -4,6 +4,7 @@ use axum::{
     middleware::Next,
     response::Response,
 };
+use secrecy::ExposeSecret;
 
 use super::{
     auth::{scope::AppPermission, token::AccessTokenClaims},
@@ -13,10 +14,11 @@ use super::{
 };
 
 const SCHEME_PREFIX: &str = "Bearer ";
+const API_KEY_HEADER: &str = "X-Api-Key";
 
 /// Login required middleware
 ///
-/// Requires that the user must have the valid JWT Bearer token.
+/// Requires that the user must have a valid JWT Bearer token.
 pub async fn login_required(
     State(ctx): State<ApiContext>,
     parts: Parts,
@@ -55,6 +57,32 @@ pub async fn login_required(
 
     req.extensions_mut().insert(auth_user);
 
+    Ok(next.run(req).await)
+}
+
+/// X-Api-Key header required middleware
+///
+/// Requires that the user must have a valid api key.
+pub async fn api_key_required(
+    State(ctx): State<ApiContext>,
+    parts: Parts,
+    req: Request,
+    next: Next,
+) -> Result<Response, AppError> {
+    // Get the value of the 'X-Api-Key' header, if it was sent at all.
+    let auth_api_header = parts
+        .headers
+        .get(API_KEY_HEADER)
+        .ok_or(AppError::Unauthorized)?;
+
+    let token = auth_api_header
+        .to_str()
+        .map_err(|_| AppError::Unauthorized)?;
+    if token != ctx.config.api_key.expose_secret() {
+        return Err(AppError::Unauthorized);
+    }
+
+    tracing::Span::current().record("api_key", tracing::field::display(&token));
     Ok(next.run(req).await)
 }
 

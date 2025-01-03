@@ -12,7 +12,7 @@ use crate::{
     app::{
         auth::session::{Session, SessionData},
         error::AppError,
-        extrator::{ApiKey, AuthUser, ValidatedJson},
+        extrator::{AuthUser, ValidatedJson},
         utils::validation::validate_password,
         ApiContext,
     },
@@ -109,7 +109,6 @@ pub async fn revoke_session(
 )]
 #[tracing::instrument(name = "Revoke session by id", skip_all, fields(req = ?req))]
 pub async fn revoke_session_by_id(
-    _api_key: ApiKey,
     ctx: State<ApiContext>,
     Path(id): Path<Uuid>,
     ValidatedJson(req): ValidatedJson<RevokeSessionByIdInput>,
