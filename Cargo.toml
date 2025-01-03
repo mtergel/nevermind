@@ -47,5 +47,5 @@ uuid = { version = "1.10.0", features = ["v4", "serde"] }
 validator = { version = "0.19.0", features = ["derive"] }
 
 [dev-dependencies]
-fake = "2.10.0"
+fake = "3.1.0"
 wiremock = "0.6.2"
