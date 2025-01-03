@@ -11,8 +11,7 @@
             "name": "app_permission",
             "kind": {
               "Enum": [
-                "user.view",
-                "user.edit"
+                "user.view"
               ]
             }
           }
