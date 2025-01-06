@@ -1,19 +1,119 @@
-use axum::extract::State;
+use axum::{extract::State, Json};
+use serde::{Deserialize, Serialize};
+use utoipa::ToSchema;
+use uuid::Uuid;
 
 use crate::{
-    app::{error::AppError, extrator::AuthUser, ApiContext},
+    app::{
+        error::AppError,
+        utils::{cursor_pagination::CPagination, types::Timestamptz},
+        ApiContext,
+    },
     routes::docs::ADMIN_TAG,
 };
 
+// Pagination types
+#[derive(Debug, Deserialize, ToSchema)]
+pub struct PaginationInput {
+    #[schema(value_type = Option<String>)]
+    cursor: Option<CPagination>,
+}
+
+#[derive(Serialize, ToSchema)]
+pub struct UserListResponse {
+    data: Vec<UserData>,
+    #[schema(value_type = Option<String>)]
+    next_cursor: Option<CPagination>,
+}
+
+#[derive(Serialize, ToSchema)]
+pub struct UserData {
+    user_id: Uuid,
+    username: String,
+    #[schema(value_type = String)]
+    created_at: Timestamptz,
+}
+
 #[utoipa::path(
     get,
-    path = "/admin/users",
+    path = "/users",
     tag = ADMIN_TAG,
     security(
         ("bearerAuth" = ["user.view"])
     ),
+    request_body = PaginationInput,
+    responses(
+        (status = 200, description = "List user, ordered by created at", body = UserListResponse),
+        (status = 401, description = "Unauthorized"),
+        (status = 403, description = "Forbidden, scope not present"),
+        (status = 500, description = "Internal server error")
+    )
+
 )]
-#[tracing::instrument(name = "List users", skip_all)]
-pub async fn list_users(_auth_user: AuthUser, _ctx: State<ApiContext>) -> Result<(), AppError> {
-    Ok(())
+#[tracing::instrument(name = "List users", skip_all, fields(req = ?req))]
+pub async fn list_users(
+    ctx: State<ApiContext>,
+    Json(req): Json<PaginationInput>,
+) -> Result<Json<UserListResponse>, AppError> {
+    let page_size = 25;
+    match req.cursor {
+        Some(cursor) => {
+            let next_res = sqlx::query_as!(
+                UserData,
+                r#"
+                    select u.user_id, u.username, u.created_at
+                    from "user" u
+                    where (created_at, user_id) > ($1, $2)
+                    order by created_at, user_id
+                    limit $3
+                "#,
+                cursor.created_at.0,
+                cursor.id,
+                page_size
+            )
+            .fetch_all(&*ctx.db_pool)
+            .await?;
+
+            let next_cursor: Option<CPagination> = match next_res.last() {
+                Some(item) => Some(CPagination {
+                    id: item.user_id,
+                    created_at: item.created_at.clone(),
+                }),
+                None => None,
+            };
+
+            return Ok(Json(UserListResponse {
+                data: next_res,
+                next_cursor,
+            }));
+        }
+        None => {
+            // When there's no cursor, just fetch the first 25 rows
+            let next_res = sqlx::query_as!(
+                UserData,
+                r#"
+                    select u.user_id, u.username, u.created_at
+                    from "user" u
+                    order by created_at, user_id
+                    limit $1
+                "#,
+                page_size
+            )
+            .fetch_all(&*ctx.db_pool)
+            .await?;
+
+            let next_cursor: Option<CPagination> = match next_res.last() {
+                Some(item) => Some(CPagination {
+                    id: item.user_id,
+                    created_at: item.created_at.clone(),
+                }),
+                None => None,
+            };
+
+            return Ok(Json(UserListResponse {
+                data: next_res,
+                next_cursor,
+            }));
+        }
+    };
 }

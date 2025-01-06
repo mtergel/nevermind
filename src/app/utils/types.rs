@@ -4,7 +4,7 @@ use std::fmt::Formatter;
 use time::format_description::well_known::Rfc3339;
 use time::OffsetDateTime;
 
-#[derive(Debug, sqlx::Type)]
+#[derive(Debug, Clone, sqlx::Type)]
 pub struct Timestamptz(pub OffsetDateTime);
 
 impl Serialize for Timestamptz {
