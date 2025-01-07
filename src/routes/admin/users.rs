@@ -10,7 +10,7 @@ use uuid::Uuid;
 use crate::{
     app::{
         error::AppError,
-        utils::{cursor_pagination::CPagination, types::Timestamptz},
+        utils::{types::CPagination, types::Timestamptz},
         ApiContext,
     },
     routes::docs::ADMIN_TAG,
@@ -18,7 +18,7 @@ use crate::{
 
 // Pagination types
 #[derive(Debug, Deserialize, ToSchema)]
-pub struct PaginationInput {
+pub struct ListUsersInput {
     #[schema(value_type = Option<String>)]
     cursor: Option<CPagination>,
 }
@@ -45,7 +45,7 @@ pub struct UserData {
     security(
         ("bearerAuth" = ["user.view"])
     ),
-    request_body = PaginationInput,
+    request_body = ListUsersInput,
     responses(
         (status = 200, description = "List user, ordered by created at", body = UserListResponse),
         (status = 401, description = "Unauthorized"),
@@ -57,7 +57,7 @@ pub struct UserData {
 #[tracing::instrument(name = "List users", skip_all, fields(req = ?req))]
 pub async fn list_users(
     ctx: State<ApiContext>,
-    Query(req): Query<PaginationInput>,
+    Query(req): Query<ListUsersInput>,
 ) -> Result<Json<UserListResponse>, AppError> {
     let page_size: usize = 25;
     let cursor_size: i64 = (page_size + 1) as i64;
