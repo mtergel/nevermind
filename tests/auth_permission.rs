@@ -11,7 +11,7 @@ async fn permission_check_fails_for_no_access() {
 
     let res = app
         .api_client
-        .post(&format!("{}/admin/users", &app.address))
+        .get(&format!("{}/admin/users", &app.address))
         .header("Authorization", "Bearer ".to_owned() + &token)
         .send()
         .await

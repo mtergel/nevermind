@@ -1,4 +1,7 @@
-use axum::{extract::State, Json};
+use axum::{
+    extract::{Query, State},
+    Json,
+};
 use serde::{Deserialize, Serialize};
 use utoipa::ToSchema;
 use uuid::Uuid;
@@ -53,9 +56,9 @@ pub struct UserData {
 #[tracing::instrument(name = "List users", skip_all, fields(req = ?req))]
 pub async fn list_users(
     ctx: State<ApiContext>,
-    Json(req): Json<PaginationInput>,
+    Query(req): Query<PaginationInput>,
 ) -> Result<Json<UserListResponse>, AppError> {
-    let page_size = 25;
+    let page_size: i64 = 25;
     match req.cursor {
         Some(cursor) => {
             let next_res = sqlx::query_as!(
@@ -63,8 +66,8 @@ pub async fn list_users(
                 r#"
                     select u.user_id, u.username, u.created_at
                     from "user" u
-                    where (created_at, user_id) > ($1, $2)
-                    order by created_at, user_id
+                    where (created_at, user_id) < ($1, $2)
+                    order by created_at desc, user_id desc
                     limit $3
                 "#,
                 cursor.created_at.0,
@@ -74,12 +77,14 @@ pub async fn list_users(
             .fetch_all(&*ctx.db_pool)
             .await?;
 
-            let next_cursor: Option<CPagination> = match next_res.last() {
-                Some(item) => Some(CPagination {
+            let next_cursor: Option<CPagination> = if next_res.len() < page_size.try_into().unwrap()
+            {
+                None
+            } else {
+                next_res.last().map(|item| CPagination {
                     id: item.user_id,
                     created_at: item.created_at.clone(),
-                }),
-                None => None,
+                })
             };
 
             return Ok(Json(UserListResponse {
@@ -94,7 +99,7 @@ pub async fn list_users(
                 r#"
                     select u.user_id, u.username, u.created_at
                     from "user" u
-                    order by created_at, user_id
+                    order by created_at desc, user_id desc
                     limit $1
                 "#,
                 page_size
@@ -102,12 +107,14 @@ pub async fn list_users(
             .fetch_all(&*ctx.db_pool)
             .await?;
 
-            let next_cursor: Option<CPagination> = match next_res.last() {
-                Some(item) => Some(CPagination {
+            let next_cursor: Option<CPagination> = if next_res.len() < page_size.try_into().unwrap()
+            {
+                None
+            } else {
+                next_res.last().map(|item| CPagination {
                     id: item.user_id,
                     created_at: item.created_at.clone(),
-                }),
-                None => None,
+                })
             };
 
             return Ok(Json(UserListResponse {

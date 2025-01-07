@@ -1,0 +1,18 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n                insert into email (user_id, email, verified, is_primary, created_at)\n                values ($1, $2, $3, $4, $5)\n            ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Text",
+        "Bool",
+        "Bool",
+        "Timestamptz"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "6aedade19e8a85a9c6dc2a0be73f96fe35f2d1ef3cad1f0ab197e81057b6de5b"
+}
