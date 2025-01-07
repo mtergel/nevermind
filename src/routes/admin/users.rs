@@ -3,6 +3,7 @@ use axum::{
     Json,
 };
 use serde::{Deserialize, Serialize};
+use sqlx::{prelude::FromRow, Postgres, QueryBuilder};
 use utoipa::ToSchema;
 use uuid::Uuid;
 
@@ -29,7 +30,7 @@ pub struct UserListResponse {
     next_cursor: Option<CPagination>,
 }
 
-#[derive(Serialize, ToSchema)]
+#[derive(Serialize, ToSchema, FromRow)]
 pub struct UserData {
     user_id: Uuid,
     username: String,
@@ -61,70 +62,41 @@ pub async fn list_users(
     let page_size: usize = 25;
     let cursor_size: i64 = (page_size + 1) as i64;
 
-    match req.cursor {
-        Some(cursor) => {
-            let mut next_res = sqlx::query_as!(
-                UserData,
-                r#"
-                    select u.user_id, u.username, u.created_at
-                    from "user" u
-                    where (created_at, user_id) <= ($1, $2)
-                    order by created_at desc, user_id desc
-                    limit $3
-                "#,
-                cursor.created_at.0,
-                cursor.id,
-                cursor_size
-            )
-            .fetch_all(&*ctx.db_pool)
-            .await?;
+    let mut query_builder: QueryBuilder<Postgres> = QueryBuilder::new(
+        r#"
+            select u.user_id, u.username, u.created_at 
+            from "user" u
+        "#,
+    );
 
-            let next_cursor: Option<CPagination> =
-                if next_res.len() < cursor_size.try_into().unwrap() {
-                    None
-                } else {
-                    let next_item = next_res.pop();
-                    next_item.map(|item| CPagination {
-                        id: item.user_id,
-                        created_at: item.created_at.clone(),
-                    })
-                };
+    if let Some(c) = req.cursor {
+        query_builder.push(" where (created_at, user_id) <= (");
+        let mut separated = query_builder.separated(", ");
+        separated.push_bind(c.created_at);
+        separated.push_bind(c.id);
+        separated.push_unseparated(") ");
+    }
 
-            return Ok(Json(UserListResponse {
-                data: next_res,
-                next_cursor,
-            }));
-        }
-        None => {
-            // When there's no cursor, just fetch the first 25 rows
-            let mut next_res = sqlx::query_as!(
-                UserData,
-                r#"
-                    select u.user_id, u.username, u.created_at
-                    from "user" u
-                    order by created_at desc, user_id desc
-                    limit $1
-                "#,
-                cursor_size
-            )
-            .fetch_all(&*ctx.db_pool)
-            .await?;
+    query_builder.push(" order by u.created_at desc, u.user_id desc ");
 
-            let next_cursor: Option<CPagination> =
-                if next_res.len() < cursor_size.try_into().unwrap() {
-                    None
-                } else {
-                    let next_item = next_res.pop();
-                    next_item.map(|item| CPagination {
-                        id: item.user_id,
-                        created_at: item.created_at.clone(),
-                    })
-                };
+    query_builder.push(" limit ");
+    query_builder.push_bind(cursor_size);
 
-            return Ok(Json(UserListResponse {
-                data: next_res,
-                next_cursor,
-            }));
-        }
+    let query = query_builder.build_query_as::<UserData>();
+    let mut next_res = query.fetch_all(&*ctx.db_pool).await?;
+
+    let next_cursor: Option<CPagination> = if next_res.len() < cursor_size.try_into().unwrap() {
+        None
+    } else {
+        let next_item = next_res.pop();
+        next_item.map(|item| CPagination {
+            id: item.user_id,
+            created_at: item.created_at.clone(),
+        })
     };
+
+    return Ok(Json(UserListResponse {
+        data: next_res,
+        next_cursor,
+    }));
 }
