@@ -2042,6 +2042,7 @@ dependencies = [
  "aws-sdk-sesv2",
  "axum",
  "base32",
+ "base64 0.22.1",
  "config",
  "fake",
  "futures",
