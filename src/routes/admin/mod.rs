@@ -5,6 +5,7 @@ use utoipa::OpenApi;
 use crate::{app::ApiContext, permission_required};
 
 pub mod users;
+pub mod business;
 
 fn users_router() -> Router<ApiContext> {
     Router::new()
@@ -12,8 +13,18 @@ fn users_router() -> Router<ApiContext> {
         .route_layer(permission_required!(&AppPermission::UserView))
 }
 
+fn business_router() -> Router<ApiContext> {
+    Router::new()
+        .route("/business", get(list_users))
+        // TODO: Permission setup
+        .route_layer(permission_required!(&AppPermission::UserView))
+}
+
 pub fn router() -> Router<ApiContext> {
-    Router::new().nest("/admin", Router::new().merge(users_router()))
+    Router::new().nest(
+        "/admin",
+        Router::new().merge(users_router()).merge(business_router()),
+    )
 }
 
 #[derive(OpenApi)]
