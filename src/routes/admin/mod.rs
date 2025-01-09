@@ -4,8 +4,8 @@ use utoipa::OpenApi;
 
 use crate::{app::ApiContext, permission_required};
 
-pub mod users;
 pub mod business;
+pub mod users;
 
 fn users_router() -> Router<ApiContext> {
     Router::new()

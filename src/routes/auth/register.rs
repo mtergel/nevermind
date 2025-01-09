@@ -33,7 +33,7 @@ pub struct RegisterUserInput {
     tag = AUTH_TAG,
     request_body = RegisterUserInput,
     responses(
-        (status = 201, description = "Successful created"),
+        (status = 201, description = "Successfully created"),
         (status = 400, description = "Bad request"),
         (status = 422, description = "Invalid input", body = AppError),
         (status = 500, description = "Internal server error")
