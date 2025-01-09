@@ -2,7 +2,10 @@ use std::collections::HashSet;
 
 use axum::{
     extract::{FromRequest, FromRequestParts, Json, Request},
-    http::request::Parts,
+    http::{
+        header::{HeaderValue, ACCEPT_LANGUAGE},
+        request::Parts,
+    },
 };
 use serde::de::DeserializeOwned;
 use uuid::Uuid;
@@ -62,5 +65,22 @@ where
             .get::<AuthUser>()
             .cloned()
             .ok_or(anyhow::anyhow!("Can't extract auth user. Wrap with login_required").into())
+    }
+}
+
+// TODO:
+pub struct ExtractLocale(pub String);
+impl<S> FromRequestParts<S> for ExtractLocale
+where
+    S: Send + Sync,
+{
+    type Rejection = AppError;
+
+    async fn from_request_parts(parts: &mut Parts, _state: &S) -> Result<Self, Self::Rejection> {
+        if let Some(locale) = parts.headers.get(ACCEPT_LANGUAGE) {
+            Ok(ExtractLocale(locale.clone()))
+        } else {
+            Ok(ExtractLocale(HeaderValue::from_str("en").unwrap()))
+        }
     }
 }

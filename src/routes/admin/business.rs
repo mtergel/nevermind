@@ -1,29 +1,19 @@
-use axum::{extract::State, Json};
-use serde::{Deserialize, Serialize};
+use axum::{
+    extract::{Path, State},
+    http::HeaderMap,
+    Json,
+};
+use serde::Serialize;
 use utoipa::ToSchema;
 use uuid::Uuid;
-use validator::Validate;
 
 use crate::{
-    app::{
-        error::AppError,
-        extrator::ValidatedJson,
-        utils::{
-            types::Timestamptz,
-            validation::{BUSINESS_NAME_EN_REGEX, BUSINESS_NAME_MN_REGEX},
-        },
-        ApiContext,
-    },
+    app::{error::AppError, extrator::ExtractLocale, utils::types::Timestamptz, ApiContext},
     routes::docs::ADMIN_TAG,
 };
 
 #[derive(Serialize, ToSchema)]
-pub struct BusinessListResponse {
-    data: Vec<BusinessData>,
-}
-
-#[derive(Serialize, ToSchema)]
-pub struct BusinessData {
+pub struct BusinessResponse {
     business_id: Uuid,
     name: Option<String>,
     #[schema(value_type = String)]
@@ -32,69 +22,43 @@ pub struct BusinessData {
 
 #[utoipa::path(
     get,
-    path = "/business",
+    path = "/business/{id}",
     tag = ADMIN_TAG,
     security(
         // TODO
         ("bearerAuth" = ["user.view"])
     ),
+    params(
+        ("id" = String, Path, description = "Business database id")
+    ),
     responses(
-        (status = 200, description = "List business, ordered by created at", body = BusinessListResponse),
+        (status = 200, description = "Business detail", body = BusinessResponse),
         (status = 401, description = "Unauthorized"),
         (status = 403, description = "Forbidden, scope not present"),
         (status = 500, description = "Internal server error")
     )
 )]
-#[tracing::instrument(name = "List business", skip_all)]
-pub async fn list_business(ctx: State<ApiContext>) -> Result<Json<BusinessListResponse>, AppError> {
-    let rows = sqlx::query_as!(
-        BusinessData,
+#[tracing::instrument(name = "Get business", skip_all)]
+pub async fn get_business(
+    ctx: State<ApiContext>,
+    Path(id): Path<Uuid>,
+    ExtractLocale(locale): ExtractLocale,
+) -> Result<Json<BusinessResponse>, AppError> {
+    let row = sqlx::query_as!(
+        BusinessResponse,
         r#"
             select
                 b.business_id,
                 coalesce(nullif(b.name->$1, ''), b.name->'en') as name,
                 b.created_at
             from business b
+            where business_id = $2
         "#,
-        "mn"
+        locale,
+        id
     )
-    // TODO: Pagination
-    .fetch_all(&*ctx.db_pool)
+    .fetch_one(&*ctx.db_pool)
     .await?;
 
-    Ok(Json(BusinessListResponse { data: rows }))
-}
-
-#[derive(Debug, Deserialize, Validate, ToSchema)]
-pub struct CreateBusinessInput {
-    #[validate(regex(path = *BUSINESS_NAME_EN_REGEX))]
-    name: String,
-
-    #[validate(regex(path = *BUSINESS_NAME_MN_REGEX))]
-    name_mn: Option<String>,
-}
-
-#[utoipa::path(
-    post,
-    path = "/business",
-    tag = ADMIN_TAG,
-    request_body = CreateBusinessInput,
-    security(
-        // TODO
-        ("bearerAuth" = ["user.view"])
-    ),
-    responses(
-        (status = 201, description = "Successfully created"),
-        (status = 401, description = "Unauthorized"),
-        (status = 403, description = "Forbidden, scope not present"),
-        (status = 422, description = "Invalid input", body = AppError),
-        (status = 500, description = "Internal server error")
-    )
-)]
-#[tracing::instrument(name = "Create business", skip_all, fields(req = ?req))]
-pub async fn create_business(
-    ctx: State<ApiContext>,
-    ValidatedJson(req): ValidatedJson<CreateBusinessInput>,
-) -> Result<(), AppError> {
-    Ok(())
+    Ok(Json(row))
 }

@@ -1,4 +1,5 @@
 use axum::{routing::get, Router};
+use business::get_business;
 use users::list_users;
 use utoipa::OpenApi;
 
@@ -15,7 +16,7 @@ fn users_router() -> Router<ApiContext> {
 
 fn business_router() -> Router<ApiContext> {
     Router::new()
-        .route("/business", get(list_users))
+        .route("/business/{id}", get(get_business))
         // TODO: Permission setup
         .route_layer(permission_required!(&AppPermission::UserView))
 }
