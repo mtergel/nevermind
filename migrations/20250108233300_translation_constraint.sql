@@ -7,7 +7,7 @@ create or replace function add_hstore_not_null(
 declare
     constraint_name text;
 begin
-    constraint_name := 'chk_i10n_' || tablename || '_' || columnname || '_en_not_null';
+    constraint_name := 'chk_l10n_' || tablename || '_' || columnname || '_en_not_null';
     execute format('ALTER TABLE %I
             ADD CONSTRAINT %I
             CHECK (%I ? ''en'' AND %I->''en'' IS NOT NULL);',
