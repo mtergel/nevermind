@@ -2,13 +2,13 @@ use std::collections::HashSet;
 
 use axum::{
     extract::{FromRequest, FromRequestParts, Json, Request},
-    http::request::Parts,
+    http::{header::ACCEPT_LANGUAGE, request::Parts},
 };
 use serde::de::DeserializeOwned;
 use uuid::Uuid;
 use validator::Validate;
 
-use super::{auth::scope::AppPermission, error::AppError};
+use super::{auth::scope::AppPermission, error::AppError, utils::types::Locale};
 
 /// Add this as a parameter to a handler function to
 /// extract body into validated JSON.
@@ -62,5 +62,22 @@ where
             .get::<AuthUser>()
             .cloned()
             .ok_or(anyhow::anyhow!("Can't extract auth user. Wrap with login_required").into())
+    }
+}
+
+pub struct ExtractLocale(pub Locale);
+impl<S> FromRequestParts<S> for ExtractLocale
+where
+    S: Send + Sync,
+{
+    type Rejection = AppError;
+
+    async fn from_request_parts(parts: &mut Parts, _state: &S) -> Result<Self, Self::Rejection> {
+        if let Some(locale) = parts.headers.get(ACCEPT_LANGUAGE) {
+            let locale = locale.to_str().unwrap_or("en").parse().unwrap();
+            return Ok(ExtractLocale(locale));
+        }
+
+        Ok(ExtractLocale(Locale::En))
     }
 }

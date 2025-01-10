@@ -121,3 +121,28 @@ impl<'de> de::Deserialize<'de> for CPagination {
         deserializer.deserialize_str(StrVisitor)
     }
 }
+
+pub enum Locale {
+    En,
+    Mn,
+}
+
+impl std::fmt::Display for Locale {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Locale::En => write!(f, "en"),
+            Locale::Mn => write!(f, "mn"),
+        }
+    }
+}
+
+impl std::str::FromStr for Locale {
+    type Err = Option<()>;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s {
+            "mn" => Ok(Locale::Mn),
+            _ => Ok(Locale::En),
+        }
+    }
+}
