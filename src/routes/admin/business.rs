@@ -1,6 +1,5 @@
 use axum::{
     extract::{Path, State},
-    http::HeaderMap,
     Json,
 };
 use serde::Serialize;
@@ -54,7 +53,7 @@ pub async fn get_business(
             from business b
             where business_id = $2
         "#,
-        locale,
+        locale.to_string(),
         id
     )
     .fetch_one(&*ctx.db_pool)
