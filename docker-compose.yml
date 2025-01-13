@@ -1,7 +1,8 @@
 services:
   postgres:
-    image: postgres:latest
-    container_name: postgres-latest
+    build:
+      context: postgis
+    container_name: postgres-17
     ports:
       - "5432:5432"
     environment:
