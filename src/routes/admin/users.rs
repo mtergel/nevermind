@@ -43,7 +43,7 @@ pub struct UserData {
     path = "/users",
     tag = ADMIN_TAG,
     security(
-        ("bearerAuth" = ["user.view"])
+        ("bearerAuth" = ["user.read"])
     ),
     request_body = ListUsersInput,
     responses(

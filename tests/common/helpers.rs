@@ -76,6 +76,20 @@ impl TestApp {
 
         user_tokens.access_token
     }
+
+    pub async fn add_permission(&self, permission: &str) {
+        let _ = sqlx::query!(
+            r#"
+                insert into user_permission (user_id, permission)
+                values ($1, $2::app_permission);
+            "#,
+            self.test_user.user_id,
+            permission as _
+        )
+        .execute(&self.db_pool)
+        .await
+        .unwrap();
+    }
 }
 
 pub struct TestUser {

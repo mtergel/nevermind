@@ -11,14 +11,14 @@ pub mod users;
 fn users_router() -> Router<ApiContext> {
     Router::new()
         .route("/users", get(list_users))
-        .route_layer(permission_required!(&AppPermission::UserView))
+        .route_layer(permission_required!(&AppPermission::UserRead))
 }
 
 fn business_router() -> Router<ApiContext> {
     Router::new()
         .route("/business/{id}", get(get_business))
         // TODO: Permission setup
-        .route_layer(permission_required!(&AppPermission::UserView))
+        .route_layer(permission_required!(&AppPermission::UserRead))
 }
 
 pub fn router() -> Router<ApiContext> {

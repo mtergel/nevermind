@@ -11,25 +11,15 @@ pub struct Business {
     pub name: String,
 }
 
-// TODO: Move away from admin list business table
+// TODO:
+// Move away from admin list business table
 // to remove extra setup code
+// Add permission for buiness
 
 #[tokio::test]
 async fn localization_defaults_to_en_works() {
     let app = spawn_app().await;
-
-    // adding permission
-    sqlx::query!(
-        r#"
-            insert into user_role (user_id, role)
-            values ($1, $2::app_role)
-        "#,
-        app.test_user.user_id,
-        "root" as _
-    )
-    .execute(&app.db_pool)
-    .await
-    .expect("failed to add permission");
+    app.add_permission("user.read").await;
 
     let token = app.login_and_get_token().await;
 
@@ -71,19 +61,7 @@ async fn localization_defaults_to_en_works() {
 #[tokio::test]
 async fn localization_mn_works() {
     let app = spawn_app().await;
-
-    // adding permission
-    sqlx::query!(
-        r#"
-            insert into user_role (user_id, role)
-            values ($1, $2::app_role)
-        "#,
-        app.test_user.user_id,
-        "root" as _
-    )
-    .execute(&app.db_pool)
-    .await
-    .expect("failed to add permission");
+    app.add_permission("user.read").await;
 
     let token = app.login_and_get_token().await;
 
@@ -126,19 +104,7 @@ async fn localization_mn_works() {
 #[tokio::test]
 async fn localization_en_works() {
     let app = spawn_app().await;
-
-    // adding permission
-    sqlx::query!(
-        r#"
-            insert into user_role (user_id, role)
-            values ($1, $2::app_role)
-        "#,
-        app.test_user.user_id,
-        "root" as _
-    )
-    .execute(&app.db_pool)
-    .await
-    .expect("failed to add permission");
+    app.add_permission("user.read").await;
 
     let token = app.login_and_get_token().await;
 

@@ -2,7 +2,6 @@ use std::{collections::HashSet, str::FromStr};
 
 use serde::{Deserialize, Serialize};
 use sqlx::PgPool;
-use utoipa::ToSchema;
 use uuid::Uuid;
 
 use crate::app::error::AppError;
@@ -12,18 +11,30 @@ pub struct UserScopes {
     pub scopes: Vec<AppPermission>,
 }
 
-#[derive(Debug, Clone, Hash, PartialEq, Eq, Serialize, Deserialize, sqlx::Type, ToSchema)]
+#[derive(Debug, Clone, Hash, PartialEq, Eq, Serialize, Deserialize, sqlx::Type)]
 #[sqlx(type_name = "app_permission")]
 pub enum AppPermission {
-    #[sqlx(rename = "user.view")]
-    #[serde(rename = "user.view")]
-    UserView,
+    #[sqlx(rename = "user.create")]
+    #[serde(rename = "user.create")]
+    UserCreate,
+    #[sqlx(rename = "user.read")]
+    #[serde(rename = "user.read")]
+    UserRead,
+    #[sqlx(rename = "user.update")]
+    #[serde(rename = "user.update")]
+    UserUpdate,
+    #[sqlx(rename = "user.delete")]
+    #[serde(rename = "user.delete")]
+    UserDelete,
 }
 
 impl std::fmt::Display for AppPermission {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         let scope_str = match self {
-            AppPermission::UserView => "user.view",
+            AppPermission::UserCreate => "user.create",
+            AppPermission::UserRead => "user.read",
+            AppPermission::UserUpdate => "user.update",
+            AppPermission::UserDelete => "user.delete",
         };
         write!(f, "{}", scope_str)
     }
@@ -46,7 +57,10 @@ impl FromStr for AppPermission {
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         match s {
-            "user.view" => Ok(Self::UserView),
+            "user.create" => Ok(Self::UserCreate),
+            "user.read" => Ok(Self::UserRead),
+            "user.update" => Ok(Self::UserUpdate),
+            "user.delete" => Ok(Self::UserDelete),
             _ => Err(format!("Unknown permission: {}", s)),
         }
     }
@@ -68,11 +82,9 @@ impl AppPermission {
 pub async fn get_scopes(user_id: Uuid, pool: &PgPool) -> Result<UserScopes, AppError> {
     let scopes = sqlx::query_scalar!(
         r#"
-            select rp.permission as "permission!: AppPermission"
-            from user_role ur
-            join role_permission rp
-                on ur.role = rp.role
-            where ur.user_id = $1 
+            select permission as "permission!: AppPermission"
+            from user_permission
+            where user_id = $1
         "#,
         user_id
     )

@@ -25,7 +25,7 @@ pub struct BusinessResponse {
     tag = ADMIN_TAG,
     security(
         // TODO
-        ("bearerAuth" = ["user.view"])
+        ("bearerAuth" = ["user.read"])
     ),
     params(
         ("id" = String, Path, description = "Business database id")
