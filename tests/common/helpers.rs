@@ -76,6 +76,20 @@ impl TestApp {
 
         user_tokens.access_token
     }
+
+    pub async fn add_role(&self, role: &str) {
+        sqlx::query!(
+            r#"
+                insert into user_role (user_id, role)
+                values ($1, $2::app_role)
+            "#,
+            &self.test_user.user_id,
+            role as _
+        )
+        .execute(&self.db_pool)
+        .await
+        .expect("failed to add role");
+    }
 }
 
 pub struct TestUser {

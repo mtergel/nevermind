@@ -22,19 +22,7 @@ pub struct FakeUser {
 #[tokio::test]
 async fn list_pagination_works() {
     let app = spawn_app().await;
-
-    // adding permission
-    let _ = sqlx::query!(
-        r#"
-            insert into user_role (user_id, role)
-            values ($1, $2::app_role)
-        "#,
-        app.test_user.user_id,
-        "root" as _
-    )
-    .execute(&app.db_pool)
-    .await
-    .unwrap();
+    app.add_role("root").await;
 
     let token = app.login_and_get_token().await;
 

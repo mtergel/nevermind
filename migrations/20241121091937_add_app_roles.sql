@@ -1,3 +1,4 @@
+-- This role is for application wide
 create type app_role as enum ('root', 'moderator');
 create type app_permission as enum ('user.view');
 

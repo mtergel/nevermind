@@ -23,19 +23,7 @@ async fn permission_check_fails_for_no_access() {
 #[tokio::test]
 async fn permission_check_works_for_root() {
     let app = spawn_app().await;
-
-    // adding permission
-    let _ = sqlx::query!(
-        r#"
-            insert into user_role (user_id, role)
-            values ($1, $2::app_role)
-        "#,
-        app.test_user.user_id,
-        "root" as _
-    )
-    .execute(&app.db_pool)
-    .await
-    .unwrap();
+    app.add_role("root").await;
 
     let token = app.login_and_get_token().await;
 
@@ -53,19 +41,7 @@ async fn permission_check_works_for_root() {
 #[tokio::test]
 async fn permission_check_works_for_moderator() {
     let app = spawn_app().await;
-
-    // adding permission
-    let _ = sqlx::query!(
-        r#"
-            insert into user_role (user_id, role)
-            values ($1, $2::app_role)
-        "#,
-        app.test_user.user_id,
-        "moderator" as _
-    )
-    .execute(&app.db_pool)
-    .await
-    .unwrap();
+    app.add_role("root").await;
 
     let token = app.login_and_get_token().await;
 
@@ -83,19 +59,7 @@ async fn permission_check_works_for_moderator() {
 #[tokio::test]
 async fn scope_is_added_to_jwt() {
     let app = spawn_app().await;
-
-    // adding permission
-    let _ = sqlx::query!(
-        r#"
-            insert into user_role (user_id, role)
-            values ($1, $2::app_role)
-        "#,
-        app.test_user.user_id,
-        "root" as _
-    )
-    .execute(&app.db_pool)
-    .await
-    .unwrap();
+    app.add_role("root").await;
 
     let login_body = serde_json::json!({
         "grant_type": "password",

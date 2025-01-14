@@ -5,6 +5,7 @@
 1. Clone the repo
 2. Install docker and run development containers
 ```sh
+docker compose build
 docker compose up -d
 ```
 3. Install tools
