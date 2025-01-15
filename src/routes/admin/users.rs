@@ -16,11 +16,11 @@ use crate::{
     routes::docs::ADMIN_TAG,
 };
 
-// Pagination types
-#[derive(Debug, Deserialize, ToSchema)]
+// Pagination, filter types
+#[derive(Debug, Deserialize)]
 pub struct ListUsersInput {
-    #[schema(value_type = Option<String>)]
     cursor: Option<CPagination>,
+    term: Option<String>,
 }
 
 #[derive(Serialize, ToSchema)]
@@ -45,7 +45,10 @@ pub struct UserData {
     security(
         ("bearerAuth" = ["user.view"])
     ),
-    request_body = ListUsersInput,
+    params(
+        ("cursor" = Option<String>, description = "Pagination cursor"),
+        ("term" = Option<String>, description = "Search term for username"),
+    ),
     responses(
         (status = 200, description = "List user, ordered by created at", body = UserListResponse),
         (status = 401, description = "Unauthorized"),
@@ -69,12 +72,23 @@ pub async fn list_users(
         "#,
     );
 
-    if let Some(c) = req.cursor {
+    if let Some(c) = &req.cursor {
         query_builder.push(" where (created_at, user_id) <= (");
         let mut separated = query_builder.separated(", ");
-        separated.push_bind(c.created_at);
+        separated.push_bind(c.created_at.clone());
         separated.push_bind(c.id);
         separated.push_unseparated(") ");
+    }
+
+    if let Some(s) = req.term {
+        if req.cursor.is_some() {
+            query_builder.push(" and fts @@ to_tsquery(");
+        } else {
+            query_builder.push(" where fts @@ to_tsquery(");
+        }
+
+        query_builder.push_bind(s);
+        query_builder.push(")");
     }
 
     query_builder.push(" order by u.created_at desc, u.user_id desc ");
