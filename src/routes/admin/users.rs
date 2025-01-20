@@ -36,6 +36,7 @@ pub struct UserData {
     username: String,
     #[schema(value_type = String)]
     created_at: Timestamptz,
+    verified: bool,
 }
 
 #[utoipa::path(
@@ -47,7 +48,7 @@ pub struct UserData {
     ),
     params(
         ("cursor" = Option<String>, description = "Pagination cursor"),
-        ("term" = Option<String>, description = "Search term for username"),
+        ("term" = Option<String>, description = "Search term for username, email"),
     ),
     responses(
         (status = 200, description = "List user, ordered by created at", body = UserListResponse),
@@ -67,8 +68,10 @@ pub async fn list_users(
 
     let mut query_builder: QueryBuilder<Postgres> = QueryBuilder::new(
         r#"
-            select u.user_id, u.username, u.created_at 
+            select u.user_id, u.username, u.created_at,
+            e.verified
             from "user" u
+            inner join email e using (user_id)
         "#,
     );
 

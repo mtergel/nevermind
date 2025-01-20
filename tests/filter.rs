@@ -22,28 +22,22 @@ async fn list_filter_works() {
 
     let token = app.login_and_get_token().await;
 
-    // seed data
-    let mut items: Vec<FakeUser> = Vec::with_capacity(4);
+    let user_data = vec![
+        ("car00ll", "ca_rol32@mail.com"),
+        ("alice", "alice@mail.com"),
+        ("alice_liddel", "alice_liddel19@mail.com"),
+        ("aliceaqwedf", "alice1024@mail.com"),
+        ("bob_myers", "bob_gs@mail.com"),
+        ("bob_alice", "alice_real_bob@mail.com"),
+    ];
 
-    let user = FakeUser::generate("alice", "alice@mail.com");
-    user.store(&app.db_pool).await;
-    items.push(user);
+    let mut items = Vec::with_capacity(user_data.len());
 
-    let user = FakeUser::generate("alice_liddel", "alice_liddel19@mail.com");
-    user.store(&app.db_pool).await;
-    items.push(user);
-
-    let user = FakeUser::generate("aliceaqwedf", "alice1024@mail.com");
-    user.store(&app.db_pool).await;
-    items.push(user);
-
-    let user = FakeUser::generate("bob_myers", "bob_gs@mail.com");
-    user.store(&app.db_pool).await;
-    items.push(user);
-
-    let user = FakeUser::generate("bob_alice", "alice_real_bob@mail.com");
-    user.store(&app.db_pool).await;
-    items.push(user);
+    for (username, email) in user_data {
+        let user = FakeUser::generate(username, email);
+        user.store(&app.db_pool).await;
+        items.push(user);
+    }
 
     // assert request
     let res = app
@@ -61,7 +55,7 @@ async fn list_filter_works() {
     // assert data
     let res = res.json::<UserListResponse>().await.unwrap();
     for x in res.data.iter() {
-        assert!(x.username.starts_with("alice") || x.email.starts_with("alice"));
+        assert!(x.username.starts_with("alice"));
     }
 }
 
@@ -75,7 +69,7 @@ pub struct UserListResponse {
 pub struct UserData {
     user_id: Uuid,
     username: String,
-    email: String,
+    verified: bool,
     created_at: Timestamptz,
 }
 
